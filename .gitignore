@@ -1,0 +1,17 @@
+*.o
+*.a
+*.d
+*.elf
+*.bin
+*.hex
+*.map
+*.lst
+*.out
+build/
+
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
