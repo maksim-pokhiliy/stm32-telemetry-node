@@ -20,7 +20,7 @@ Decision log for choices that are expensive to reverse: telemetry frame format, 
 ### D-001: Phase 2 is a scanning rangefinder with a live map
 
 - Date: 2026-09-29
-- Status: accepted
+- Status: accepted; the milestone numbering is superseded by D-003, the sensor choice and the scope stand
 
 **Context.** The telemetry node (M0-M6) reads an IMU and a barometer and streams frames to a serial terminal. Correct, and dull to watch. The project needs a demo that carries a README gif and a short video on its own, and the host side should use the stack the author already knows, the web. A room scanner does that, and its first five links (toolchain, UART, bus, sensor readout, framed stream) are the M1-M6 roadmap verbatim; only the payload and the consumer change. Sensor candidates: HC-SR04 ultrasonic (cheap, wide cone that smears walls and corners into a submarine-movie radar), VL53L1X laser time-of-flight (I2C, room-scale range, an honest but soft outline), TF-Luna (single-beam rangefinder, the longest range and the narrowest beam of the three, UART or I2C).
 
@@ -38,3 +38,36 @@ Decision log for choices that are expensive to reverse: telemetry frame format, 
 **Decision.** No wheels in this project. The scanner stays on a static mount. If a phase 3 ever happens it is stop-and-scan: drive, stop, take a full static scan, send it as one frame, drive on. Every scan stays clean, SLAM is sidestepped, and the new skill is real: encoders and PID to drive straight and turn an honest 90 degrees. Rule for the project from here on: phase N+1 is discussed after phase N ships. Phase 3 is not discussed before M9 is done.
 
 **Consequences.** Scope stays bare-metal C with I2C, UART and timers/PWM. The README avoids "SLAM", "mapping robot" and "lidar cartography". The vocabulary (odometry drift, dead reckoning, loop closure) is worth knowing anyway: "I understand why I did not do SLAM on an MCU with a single-beam rangefinder" is a better interview answer than a crooked robot on GitHub.
+
+### D-003: Host side before the scanner
+
+- Date: 2026-09-30
+- Status: accepted; supersedes the milestone numbering of D-001
+
+**Context.** D-001 put the scanner right after the telemetry node and left the host side for the last milestone. That leaves M6, the framed stream, validated only by a serial terminal, which shows bytes but checks neither framing nor checksums. It also builds the host pipeline and the scanner in one step, a big-bang integration at the very end. The host side is the author's native stack and the fastest part to build, and it is also the most comfortable place to overbuild.
+
+**Decision.** Phase 2 is the host side: M7 a frame parser and a serial-to-MQTT bridge, built and tested on dumps recorded at M6; M8 live plots in the browser, with replay of a recorded session when the board is off. The scanner becomes phase 3: M9 servo sweep, M10 TF-Luna readout, M11 the live map in the same dashboard. Phase 1 milestones and dates do not move. Phases are defined by a shipped outcome, not by an activity: phase 1 ends when the board streams framed telemetry, not when the soldering ends. Phase 2 is time-boxed to the bridge, the plots and the replay: no auth, no database, no servers of the author's own.
+
+**Consequences.** The protocol gets a real consumer while it is still warm, so framing and checksum mistakes surface before the scanner depends on it. When the scanner arrives, only the payload and one visualization are new. The full story, device to protocol to bridge to browser, exists after phase 2 even if phase 3 slips. The rule of D-002 ("stop-and-scan" is the earliest candidate for a phase 4) still applies, and its "M9" now reads M11.
+
+### D-004: Firmware and host side live in separate repos
+
+- Date: 2026-09-30
+- Status: accepted
+
+**Context.** The host side is a bridge process and a web dashboard sharing a frame parser. Options: a monorepo with the firmware, a GitHub organisation with one repo per tier, or two repos. This repo's premise is hand-written firmware; the host side is web code, where a different authoring policy is fine.
+
+**Decision.** Two repos. This one stays pure C: firmware, decision log, hardware notes, and the demo gif with a link to the host repo. The host repo holds the bridge and the dashboard together, because they share the parser and the frame types, and nobody wants to publish a package for a parser of a couple of hundred lines. No organisation: that is a tool for a team or a brand, and a reader opens a repo, not an org page. The frame format is the contract between the two repos: the spec lives here in the decision log, and raw dumps recorded from the board are the fixtures the host parser tests against.
+
+**Consequences.** Two toolchains, two CI setups and two READMEs stay apart, and the "hand-written" disclaimer of this repo stays absolute. The AI policy for the host repo is decided there. A protocol change is a two-repo change, which is the point: it forces the spec to be written down first.
+
+### D-005: Host transport is a managed MQTT broker, replay first
+
+- Date: 2026-09-30
+- Status: accepted
+
+**Context.** The demo should be viewable by someone in another city, and "switch the board on and it streams" is the goal. The board has no network interface, so the firmware cannot talk to a broker; the PC it is plugged into can. That is the standard node-gateway topology: a node on bare metal over UART, a gateway with the network stack, a broker, a browser. Candidates for the relay: a managed MQTT broker with WebSocket support, a self-written WebSocket relay on a rented server, a tunnel exposing the local bridge, or a realtime database. Live only works while the board and the PC are on, and a visitor opens the link when they are off.
+
+**Decision.** The bridge on the PC publishes frames to a managed MQTT broker with a free tier; the dashboard subscribes with MQTT over WebSockets. One code path serves the desk and the remote viewer. The "API" is the topic layout and the payload schema, not REST routes. Publishing credentials live only in the bridge, the browser uses a read-only user, and a retained message carries the last frame. The dashboard is replay first: a recorded session ships with the static site and plays by default, labelled with its recording date; the view switches to live, labelled as such, when a stream is up. No database: browsing history is a later phase or never. No network on the board: a WiFi module and a TCP/IP stack in the firmware would be a phase of its own. The gateway can later become a small Linux board, so that "switch it on and it streams" is literal, with no firmware change.
+
+**Consequences.** One hosted dependency, the broker, and its credentials to manage. Recorded dumps do quadruple duty: parser fixtures, offline development without the board, the public demo, and the replay mode. Firmware scope is untouched; the mistake to avoid is putting the MQTT client on the node.

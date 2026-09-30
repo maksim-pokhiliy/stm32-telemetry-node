@@ -1,6 +1,6 @@
 # Hardware
 
-Bill of materials for the telemetry node and the phase 2 scanner. Ordered Sep 2026, in transit. Exact breakout-board revisions and the wiring get filled in when the parts arrive.
+Bill of materials for the telemetry node and the phase 3 scanner. Ordered Sep 2026, in transit. Exact breakout-board revisions and the wiring get filled in when the parts arrive.
 
 ## Phase 1: telemetry node
 
@@ -12,11 +12,11 @@ Bill of materials for the telemetry node and the phase 2 scanner. Ordered Sep 20
 | Breadboard, 830 points | prototyping base | - | 1 | ordered |
 | Dupont jumper wires, 20 cm, M-M, M-F, F-F | connections between the boards | - | 30 of each | ordered |
 
-## Phase 2: scanning rangefinder
+## Phase 3: scanning rangefinder
 
 | Part | Role | Bus | Qty | Status |
 |------|------|-----|-----|--------|
-| TF-Luna | single-beam rangefinder, sweeps the room on the servo | UART or I2C, decided at M8 | 1 | ordered |
+| TF-Luna | single-beam rangefinder, sweeps the room on the servo | UART or I2C, decided at M10 | 1 | ordered |
 | MG90S servo | pan sweep; metal gears for repeatable angles | PWM | 2, one spare | ordered |
 | Pan-tilt bracket | mounts the rangefinder on the servo | - | 1 | ordered |
 | MB102 breadboard power module | separate 5 V rail for the servo and the rangefinder, so they do not load the Nucleo's USB | - | 1 | ordered |
@@ -29,8 +29,8 @@ Bill of materials for the telemetry node and the phase 2 scanner. Ordered Sep 20
 | Soldering iron FNIRSI HS-01, solder, flux | pin headers on the breakouts | ordered |
 | USB logic analyzer, 24 MHz, 8 channels | looking at the I2C and UART lines in PulseView when a bus goes quiet | ordered |
 
-Host: a PC with a serial terminal; a browser for the live map in phase 2.
+Host: a PC running the serial-to-MQTT bridge from phase 2, and a browser for the plots and, from phase 3, the live map.
 
 ## Wiring
 
-TBD. Recorded here once the parts arrive and the I2C bus scan (M3) sees both sensors. Phase 2 wiring (servo, rangefinder, separate supply) is recorded at M7 and M8.
+TBD. Recorded here once the parts arrive and the I2C bus scan (M3) sees both sensors. Phase 3 wiring (servo, rangefinder, separate supply) is recorded at M9 and M10.
