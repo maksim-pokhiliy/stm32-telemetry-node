@@ -8,7 +8,7 @@ Seven-plus years as a software engineer on web products, including real-time dev
 
 ## Status
 
-In progress, started Sep 2026. The hardware is ordered and in transit. The C core of Harvard CS50x runs in parallel and is due mid-Oct 2026; working telemetry is expected late Oct 2026. Phases 2 and 3 follow in order; phase N+1 is discussed after phase N ships.
+In progress, started Sep 2026. The hardware arrived on 5 Oct 2026. The C core of Harvard CS50x runs in parallel and is due mid-Oct 2026; working telemetry is expected late Oct 2026. Phases 2 and 3 follow in order; phase N+1 is discussed after phase N ships.
 
 All firmware code in this repo is hand-written as part of the learning process (this repo doubles as my C learning log); AI is used for study and review, not code generation.
 
