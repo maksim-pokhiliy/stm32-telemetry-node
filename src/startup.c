@@ -1,3 +1,4 @@
+#include "stm32f411_regs.h"
 #include <stdint.h>
 
 extern unsigned char STACK_TOP;
@@ -10,18 +11,13 @@ extern unsigned char DATA_SRAM_END;
 extern unsigned char BSS_SRAM_START;
 extern unsigned char BSS_SRAM_END;
 
-uint32_t counter = 1;
-uint32_t errors;
-
 void Reset_Handler(void);
 void Default_Handler(void);
 
 int main(void);
 
-void run_infinite_loop(void);
-
 void Reset_Handler(void) {
-  const uint32_t *data_src = (uint32_t *)&DATA_FLASH_IMAGE_START;
+  const uint32_t *data_src = (const uint32_t *)&DATA_FLASH_IMAGE_START;
 
   uint32_t *data_dst = (uint32_t *)&DATA_SRAM_START;
   uint32_t *data_end = (uint32_t *)&DATA_SRAM_END;
@@ -43,7 +39,9 @@ void Reset_Handler(void) {
   }
 
   main();
-  run_infinite_loop();
+
+  while (1) {
+  }
 }
 
 void Default_Handler(void) {
@@ -51,11 +49,41 @@ void Default_Handler(void) {
   }
 }
 
-int main(void) { run_infinite_loop(); }
+int main(void) {
+  volatile uint32_t *const rcc_ahb1enr_ptr =
+      (volatile uint32_t *)RCC_AHB1ENR_ADDR;
+  volatile uint32_t *const gpioa_moder_ptr =
+      (volatile uint32_t *)GPIOA_MODER_ADDR;
+  volatile uint32_t *const gpioa_bsrr_ptr =
+      (volatile uint32_t *)GPIOA_BSRR_ADDR;
 
-void run_infinite_loop(void) {
+  *rcc_ahb1enr_ptr |= RCC_AHB1ENR_GPIOAEN_MASK;
+  (void)*rcc_ahb1enr_ptr;
+
+  *gpioa_moder_ptr &= ~GPIOA_MODER_MODER5_MASK;
+  *gpioa_moder_ptr |= GPIOA_MODER_MODER5_OUTPUT;
+
+  *gpioa_bsrr_ptr = GPIOA_BSRR_BS5;
+
+  int led_state = 1;
+  volatile uint32_t blink_counter = 0;
+
   while (1) {
-    counter++;
+    if (blink_counter >= 1000000u) {
+      if (led_state == 1) {
+        *gpioa_bsrr_ptr = GPIOA_BSRR_BR5;
+
+        led_state = 0;
+      } else if (led_state == 0) {
+        *gpioa_bsrr_ptr = GPIOA_BSRR_BS5;
+
+        led_state = 1;
+      }
+
+      blink_counter = 0;
+    }
+
+    blink_counter++;
   }
 }
 
