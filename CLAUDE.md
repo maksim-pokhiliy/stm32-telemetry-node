@@ -25,13 +25,19 @@ The ceiling moves as the author learns. The README status section and the roadma
 
 ## Build, flash, test
 
-None yet. `src/` is empty and there is no build system. The planned toolchain (arm-none-eabi-gcc, make, gdb, st-link) is set up by the author in M1; do not scaffold it. When M1 lands, replace this section with the real commands as the author wrote them.
+Toolchain: arm-none-eabi-gcc 13.2.1, GNU Make 4.3, gdb-multiarch 15.1 and stlink 1.8.0 on Ubuntu 24.04 in WSL2. The board is forwarded from Windows with usbipd-win; the forward has to be repeated after a replug. The author's `Makefile` at the repo root is the build; the linker script `stm32f411re.ld` sits beside it, sources in `src/`, outputs in the gitignored `build/` (`D-007`).
+
+- `make`: compiles `src/*.c` into `build/`, links `build/firmware.elf`, prints `size`, writes `build/firmware.bin` and `build/firmware.map`.
+- `make flash`: `st-flash write build/firmware.bin 0x08000000`.
+- `make clean`: removes `build/`.
+
+Debug: `st-util` (port 4242) in one terminal; `gdb-multiarch build/firmware.elf`, then `target extended-remote localhost:4242`, `monitor reset`, `break main`, `continue` in another. There is no test suite: a milestone is verified on the bench (M1: LD2 blinks) and by reading registers in gdb. Running `make`, `size`, `objdump` or `nm` to check a build is fine; editing the Makefile, the linker script or anything in `src/` is not (ground rule above).
 
 ## Architecture and scope
 
 Data path: sensors, I2C, Nucleo-F411RE, UART, then the PC as gateway: a bridge publishes frames to a managed MQTT broker and the browser subscribes over WebSockets, replaying a recorded session while the board is off (`D-005`). The board has no network interface and the firmware gets no network stack. Phase 3 adds the rangefinder (UART or I2C, decided at M10) and a servo driven by PWM. Scope is bare-metal C with I2C, UART and timers/PWM. Out: RTOS, SPI, C++, flight control, networking on the board, a mobile platform (no odometry, no SLAM; `D-002`). Phase N+1 is discussed after phase N ships.
 
-Driver layout, build setup, the telemetry frame format and the rangefinder interface are undecided. Each becomes a decision-log entry when it is made. The frame format is the contract with the host repo: the spec lives here, the recorded dumps are its fixtures there.
+Build setup and source layout are `D-007`, register definitions `D-006`. Driver interfaces, the telemetry frame format and the rangefinder interface are undecided. Each becomes a decision-log entry when it is made. The frame format is the contract with the host repo: the spec lives here, the recorded dumps are its fixtures there.
 
 Milestones, in order: M1 toolchain bring-up and LED blink, M2 UART hello to host, M3 I2C bus scan, M4 MPU-6050 readout, M5 BMP280 readout, M6 framed telemetry stream; phase 2, in the host repo: M7 frame parser and serial-to-MQTT bridge, M8 live plots with replay; phase 3: M9 servo sweep, M10 TF-Luna readout, M11 live map in the dashboard. Status lives in `README.md`.
 

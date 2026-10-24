@@ -8,7 +8,7 @@ Seven-plus years as a software engineer on web products, including real-time dev
 
 ## Status
 
-In progress, started Sep 2026. The hardware arrived on 5 Oct 2026. The C core of Harvard CS50x runs in parallel and is due mid-Oct 2026; working telemetry is expected late Oct 2026. Phases 2 and 3 follow in order; phase N+1 is discussed after phase N ships.
+In progress, started Sep 2026. The hardware arrived on 5 Oct 2026. M1 closed on 24 Oct 2026: the toolchain runs in WSL2 and LD2 on PA5 blinks from a hand-written linker script, startup code and register definitions. Harvard CS50x is paused until November 2026 and is not run alongside this project. Working telemetry is expected late Oct 2026. Phases 2 and 3 follow in order; phase N+1 is discussed after phase N ships.
 
 All firmware code in this repo is hand-written as part of the learning process (this repo doubles as my C learning log); AI is used for study and review, not code generation.
 
@@ -52,7 +52,7 @@ Scope: bare-metal C, I2C, UART, timers/PWM. Out of scope: RTOS, SPI, flight cont
 Phase 1, telemetry node (this repo):
 
 - [x] M0: repo, plan, hardware ordered (Sep 2026)
-- [ ] M1: toolchain bring-up + LED blink
+- [x] M1: toolchain bring-up + LED blink (24 Oct 2026)
 - [ ] M2: UART "hello" to host
 - [ ] M3: I2C bus scan, sensors detected
 - [ ] M4: MPU-6050 readout
@@ -80,7 +80,7 @@ Phase 3, scanning rangefinder (firmware here, map in the phase 2 dashboard):
 
 Bill of materials, bench tools and wiring, filled in as the parts arrive: [docs/HARDWARE.md](docs/HARDWARE.md).
 
-Planned toolchain: arm-none-eabi-gcc, make, gdb, st-link. Nothing is set up yet; M1 is where that happens.
+Toolchain, set up in M1: arm-none-eabi-gcc 13.2.1, GNU Make 4.3, gdb-multiarch 15.1 and stlink 1.8.0 on Ubuntu 24.04 inside WSL2. The board is plugged into Windows and forwarded into WSL with usbipd-win; the forward is repeated after every replug. `make` builds `build/firmware.elf`, `build/firmware.bin` and a map file and prints the section sizes, `make flash` writes the binary at 0x08000000 with st-flash, `make clean` removes `build/`. Debugging is `st-util` in one terminal and `gdb-multiarch build/firmware.elf` with `target extended-remote localhost:4242` in another. Source layout, build flags and the initial stack pointer: [D-007](docs/DECISIONS.md); hand-written register definitions instead of CMSIS: [D-006](docs/DECISIONS.md).
 
 ## License
 
