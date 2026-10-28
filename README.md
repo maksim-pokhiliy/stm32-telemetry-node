@@ -8,9 +8,9 @@ Seven-plus years as a software engineer on web products, including real-time dev
 
 ## Status
 
-In progress, started Sep 2026. The hardware arrived on 5 Oct 2026. M1 closed on 24 Oct 2026: the toolchain runs in WSL2 and LD2 on PA5 blinks from a hand-written linker script, startup code and register definitions. Harvard CS50x is paused until November 2026 and is not run alongside this project. Working telemetry is expected late Oct 2026. Phases 2 and 3 follow in order; phase N+1 is discussed after phase N ships.
+In progress, started Sep 2026. The hardware arrived on 5 Oct 2026. M1 closed on 24 Oct 2026: the toolchain runs in WSL2 and LD2 on PA5 blinks from a hand-written linker script, startup code and register definitions. M2 closed on 28 Oct 2026: the board reports its uptime once a second over the ST-LINK virtual COM port, timed by a SysTick millisecond tick. Harvard CS50x is paused until November 2026 and is not run alongside this project. Working telemetry is expected late Oct 2026. Phases 2 and 3 follow in order; phase N+1 is discussed after phase N ships.
 
-All firmware code in this repo is hand-written as part of the learning process (this repo doubles as my C learning log); AI is used for study and review, not code generation.
+All firmware code in this repo is hand-written as part of the learning process (this repo doubles as my C learning log); AI is used for study and review, not code generation. One exception, recorded in the M2 commit: after the first UART evening I had an AI pass rename identifiers, trim comments and reorder the USART enable sequence in two files that already worked, `src/startup.c` and `src/stm32f411_regs.h`.
 
 ## Architecture
 
@@ -53,7 +53,7 @@ Phase 1, telemetry node (this repo):
 
 - [x] M0: repo, plan, hardware ordered (Sep 2026)
 - [x] M1: toolchain bring-up + LED blink (24 Oct 2026)
-- [ ] M2: UART "hello" to host
+- [x] M2: UART "hello" to host (28 Oct 2026)
 - [ ] M3: I2C bus scan, sensors detected
 - [ ] M4: MPU-6050 readout
 - [ ] M5: BMP280 readout
@@ -81,6 +81,8 @@ Phase 3, scanning rangefinder (firmware here, map in the phase 2 dashboard):
 Bill of materials, bench tools and wiring, filled in as the parts arrive: [docs/HARDWARE.md](docs/HARDWARE.md).
 
 Toolchain, set up in M1: arm-none-eabi-gcc 13.2.1, GNU Make 4.3, gdb-multiarch 15.1 and stlink 1.8.0 on Ubuntu 24.04 inside WSL2. The board is plugged into Windows and forwarded into WSL with usbipd-win; the forward is repeated after every replug. `make` builds `build/firmware.elf`, `build/firmware.bin` and a map file and prints the section sizes, `make flash` writes the binary at 0x08000000 with st-flash, `make clean` removes `build/`. Debugging is `st-util` in one terminal and `gdb-multiarch build/firmware.elf` with `target extended-remote localhost:4242` in another. Source layout, build flags and the initial stack pointer: [D-007](docs/DECISIONS.md); hand-written register definitions instead of CMSIS: [D-006](docs/DECISIONS.md).
+
+Serial console, set up in M2: USART2 on PA2 (TX) and PA3 (RX), wired to the ST-LINK virtual COM port through solder bridges SB13 and SB14 (UM1724), 115200 baud, 8N1, no flow control. The baud divider is 0x8B from the 16 MHz HSI, 0.08 percent low. In WSL the port is `/dev/ttyACM0`, read with `picocom -b 115200 /dev/ttyACM0`. The firmware prints `uptime_s=0x` and the seconds in hex once a second; the UART module (`src/uart.c`) is polled and blocking: init, send a byte, send a string, send a 32-bit value as hex. Time comes from SysTick at 1 ms from the core clock, so the tick is as accurate as the HSI and has not been measured against a reference; the 32-bit millisecond counter wraps after about 49.7 days and the displayed seconds restart with it.
 
 ## License
 

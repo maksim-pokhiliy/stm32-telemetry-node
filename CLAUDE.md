@@ -8,7 +8,7 @@ Bare-metal C telemetry node on an STM32 Nucleo-F411RE: an MPU-6050 IMU and a BMP
 
 ## Ground rule: study and review only
 
-Every line of firmware here is hand-written by the author. The README says so, and the commit history has to keep it true. So:
+Every line of firmware here is hand-written by the author, with one recorded exception: after the first UART evening of M2 the author had an AI pass rename identifiers, trim comments and reorder the USART enable sequence in `src/startup.c` and `src/stm32f411_regs.h`; README and the M2 commit say so. The README says the rest is hand-written, and the commit history has to keep it true. So:
 
 - Never write firmware, a Makefile, a linker script, startup code, CMSIS/HAL glue, or an OpenOCD/st-link/gdb config for this repo. Not as a starting point, not as a reference to be rewritten. Phase 3 firmware (servo, rangefinder) is under the same rule.
 - Never write hardware facts into the repo ahead of the author confirming them on the bench: pinout, I2C addresses, register values, baud rates, wiring. The `TBD` markers in the docs stay until the author reports the milestone done.
@@ -31,7 +31,7 @@ Toolchain: arm-none-eabi-gcc 13.2.1, GNU Make 4.3, gdb-multiarch 15.1 and stlink
 - `make flash`: `st-flash write build/firmware.bin 0x08000000`.
 - `make clean`: removes `build/`.
 
-Debug: `st-util` (port 4242) in one terminal; `gdb-multiarch build/firmware.elf`, then `target extended-remote localhost:4242`, `monitor reset`, `break main`, `continue` in another. There is no test suite: a milestone is verified on the bench (M1: LD2 blinks) and by reading registers in gdb. Running `make`, `size`, `objdump` or `nm` to check a build is fine; editing the Makefile, the linker script or anything in `src/` is not (ground rule above).
+Debug: `st-util` (port 4242) in one terminal; `gdb-multiarch build/firmware.elf`, then `target extended-remote localhost:4242`, `monitor reset`, `break main`, `continue` in another. Serial console: the ST-LINK virtual COM port is `/dev/ttyACM0` in WSL, `picocom -b 115200 /dev/ttyACM0` (8N1, no flow control); since M2 the firmware prints `uptime_s=0x…` once a second. `src/uart.c` is the polled, blocking UART module (init, send byte, send string, send hex32); `src/startup.c` holds the reset handler, the vector table, the SysTick 1 ms tick and `main`. There is no test suite: a milestone is verified on the bench (M1: LD2 blinks; M2: uptime lines on the serial port) and by reading registers in gdb. Running `make`, `size`, `objdump` or `nm` to check a build is fine, so is reading the serial port or registers over st-util and gdb when the author asks for an acceptance check; editing the Makefile, the linker script or anything in `src/` is not (ground rule above).
 
 ## Architecture and scope
 
