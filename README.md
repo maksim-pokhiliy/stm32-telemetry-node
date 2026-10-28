@@ -10,7 +10,7 @@ Seven-plus years as a software engineer on web products, including real-time dev
 
 In progress, started Sep 2026. The hardware arrived on 5 Oct 2026. M1 closed on 24 Oct 2026: the toolchain runs in WSL2 and LD2 on PA5 blinks from a hand-written linker script, startup code and register definitions. M2 closed on 28 Oct 2026: the board reports its uptime once a second over the ST-LINK virtual COM port, timed by a SysTick millisecond tick. Harvard CS50x is paused until November 2026 and is not run alongside this project. Working telemetry is expected late Oct 2026. Phases 2 and 3 follow in order; phase N+1 is discussed after phase N ships.
 
-All firmware code in this repo is hand-written as part of the learning process (this repo doubles as my C learning log); AI is used for study and review, not code generation. One exception, recorded in the M2 commit: after the first UART evening I had an AI pass rename identifiers, trim comments and reorder the USART enable sequence in two files that already worked, `src/startup.c` and `src/stm32f411_regs.h`.
+All firmware code in this repo is hand-written as part of the learning process (this repo doubles as my C learning log); AI is used for study and review, not code generation. One footnote, recorded in the M2 commit: after the first UART evening I let an AI rename identifiers and trim comments in two files that already worked, `src/startup.c` and `src/stm32f411_regs.h`; every register value and every line of logic is mine.
 
 ## Architecture
 

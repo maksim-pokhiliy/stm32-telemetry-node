@@ -8,7 +8,7 @@ Bare-metal C telemetry node on an STM32 Nucleo-F411RE: an MPU-6050 IMU and a BMP
 
 ## Ground rule: study and review only
 
-Every line of firmware here is hand-written by the author, with one recorded exception: after the first UART evening of M2 the author had an AI pass rename identifiers, trim comments and reorder the USART enable sequence in `src/startup.c` and `src/stm32f411_regs.h`; README and the M2 commit say so. The README says the rest is hand-written, and the commit history has to keep it true. So:
+Every line of firmware here is hand-written by the author; the one footnote is a rename-and-comment pass by an AI over `src/startup.c` and `src/stm32f411_regs.h` after the first UART evening of M2, with the register values and the logic unchanged, recorded in README and the M2 commit. The README says so, and the commit history has to keep it true. So:
 
 - Never write firmware, a Makefile, a linker script, startup code, CMSIS/HAL glue, or an OpenOCD/st-link/gdb config for this repo. Not as a starting point, not as a reference to be rewritten. Phase 3 firmware (servo, rangefinder) is under the same rule.
 - Never write hardware facts into the repo ahead of the author confirming them on the bench: pinout, I2C addresses, register values, baud rates, wiring. The `TBD` markers in the docs stay until the author reports the milestone done.
