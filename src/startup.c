@@ -1,190 +1,130 @@
-#include "stm32f411_regs.h"
+#include <stdbool.h>
 #include <stdint.h>
 
-/* -------------------------------------------------------------------------- */
-/* External symbols defined by the linker script                              */
-/* -------------------------------------------------------------------------- */
-extern unsigned char STACK_TOP; // Top of the stack
+#include "stm32f411_regs.h"
+#include "uart.h"
 
-extern unsigned char
-    DATA_FLASH_IMAGE_START; // Start of initialized data image in Flash
+#define LED_TOGGLE_DELAY_MS 500u
+#define UART_REPORT_DELAY_MS 1000u
+#define SYSTICK_RELOAD_16MHZ_1MS 15999u
 
-extern unsigned char DATA_SRAM_START; // Start of .data section in SRAM
-extern unsigned char DATA_SRAM_END;   // End of .data section in SRAM
+extern unsigned char STACK_TOP;
+extern unsigned char DATA_FLASH_IMAGE_START;
+extern unsigned char DATA_SRAM_START;
+extern unsigned char DATA_SRAM_END;
+extern unsigned char BSS_SRAM_START;
+extern unsigned char BSS_SRAM_END;
 
-extern unsigned char BSS_SRAM_START; // Start of .bss section in SRAM
-extern unsigned char BSS_SRAM_END;   // End of .bss section in SRAM
+volatile uint32_t systick_ms = 0u;
 
-/* -------------------------------------------------------------------------- */
-/* Function declarations                                                      */
-/* -------------------------------------------------------------------------- */
 void Reset_Handler(void);
 void Default_Handler(void);
+void SysTick_Handler(void);
 
 int main(void);
 
-/* -------------------------------------------------------------------------- */
-/* Reset_Handler - Entry point after MCU reset                                */
-/* Performs minimal C runtime initialization before calling main()            */
-/* -------------------------------------------------------------------------- */
 void Reset_Handler(void) {
-  /* Copy initialized data (.data) from Flash to SRAM */
-  const uint32_t *data_src = (const uint32_t *)&DATA_FLASH_IMAGE_START;
+  const uint32_t *flash_data = (const uint32_t *)&DATA_FLASH_IMAGE_START;
+  uint32_t *sram_data = (uint32_t *)&DATA_SRAM_START;
+  uint32_t *const sram_data_end = (uint32_t *)&DATA_SRAM_END;
+  uint32_t *sram_bss = (uint32_t *)&BSS_SRAM_START;
+  uint32_t *const sram_bss_end = (uint32_t *)&BSS_SRAM_END;
 
-  uint32_t *data_dst = (uint32_t *)&DATA_SRAM_START;
-  uint32_t *data_end = (uint32_t *)&DATA_SRAM_END;
-
-  uint32_t *bss_dst = (uint32_t *)&BSS_SRAM_START;
-  uint32_t *bss_end = (uint32_t *)&BSS_SRAM_END;
-
-  while (data_dst < data_end) {
-    *data_dst = *data_src;
-
-    data_src++;
-    data_dst++;
+  while (sram_data < sram_data_end) {
+    *sram_data = *flash_data;
+    ++sram_data;
+    ++flash_data;
   }
 
-  /* Zero-initialize the .bss section in SRAM */
-  while (bss_dst < bss_end) {
-    *bss_dst = 0;
-
-    bss_dst++;
+  while (sram_bss < sram_bss_end) {
+    *sram_bss = 0u;
+    ++sram_bss;
   }
 
-  /* Jump to main application */
   main();
 
-  /* If main() ever returns, stay here forever */
   while (1) {
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Default_Handler - Catch-all handler for unused interrupts                  */
-/* -------------------------------------------------------------------------- */
 void Default_Handler(void) {
   while (1) {
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/* main - Application entry point                                             */
-/* -------------------------------------------------------------------------- */
+void SysTick_Handler(void) { systick_ms++; }
+
 int main(void) {
-  /* Pointers to peripheral registers */
-  volatile uint32_t *const rcc_ahb1enr_ptr = (volatile uint32_t *)
-      RCC_AHB1ENR_ADDR; // RCC AHB1 peripheral clock enable register
+  volatile uint32_t *const gpioa_moder = (volatile uint32_t *)GPIOA_MODER_ADDR;
+  volatile uint32_t *const gpioa_bsrr = (volatile uint32_t *)GPIOA_BSRR_ADDR;
+  volatile uint32_t *const rcc_ahb1enr = (volatile uint32_t *)RCC_AHB1ENR_ADDR;
 
-  volatile uint32_t *const rcc_apb1enr_ptr = (volatile uint32_t *)
-      RCC_APB1ENR_ADDR; // RCC APB1 peripheral clock enable register
+  volatile uint32_t *const stk_ctrl = (volatile uint32_t *)STK_CTRL_ADDR;
+  volatile uint32_t *const stk_load = (volatile uint32_t *)STK_LOAD_ADDR;
+  volatile uint32_t *const stk_val = (volatile uint32_t *)STK_VAL_ADDR;
 
-  volatile uint32_t *const gpioa_moder_ptr =
-      (volatile uint32_t *)GPIOA_MODER_ADDR; // GPIOA mode register
+  const uint32_t pin_5_mode_mask = GPIOA_MODER_PA5_MASK;
+  const uint32_t pin_5_mode_value = GPIOA_MODER_PA5_OUTPUT;
 
-  volatile uint32_t *const gpioa_bsrr_ptr =
-      (volatile uint32_t *)GPIOA_BSRR_ADDR; // GPIOA bit set/reset register
+  const uint32_t stk_ctrl_enable_mask = STK_CTRL_ENABLE_MASK;
+  const uint32_t stk_ctrl_tickint_mask = STK_CTRL_TICKINT_MASK;
+  const uint32_t stk_ctrl_clksource_mask = STK_CTRL_CLKSOURCE_MASK;
 
-  volatile uint32_t *const gpioa_afrl_ptr =
-      (volatile uint32_t *)GPIOA_AFRL_ADDR; // GPIOA AF register
+  *rcc_ahb1enr |= RCC_AHB1ENR_GPIOAEN_MASK;
+  (void)*rcc_ahb1enr;
 
-  volatile uint32_t *const usart2_brr_ptr =
-      (volatile uint32_t *)USART2_BRR_ADDR; // USART2 BRR register
+  *gpioa_moder = (*gpioa_moder & ~pin_5_mode_mask) | pin_5_mode_value;
+  *gpioa_bsrr = GPIOA_BSRR_BS5;
 
-  volatile uint32_t *const usart2_cr1_ptr =
-      (volatile uint32_t *)USART2_CR1_ADDR; // USART2 CR1 register
+  *stk_ctrl = 0u;
+  *stk_load = SYSTICK_RELOAD_16MHZ_1MS;
+  *stk_val = 0u;
 
-  volatile uint32_t *const usart2_sr_ptr =
-      (volatile uint32_t *)USART2_SR_ADDR; // USART2 SR register
+  *stk_ctrl =
+      stk_ctrl_enable_mask | stk_ctrl_tickint_mask | stk_ctrl_clksource_mask;
 
-  volatile uint32_t *const usart2_dr_ptr =
-      (volatile uint32_t *)USART2_DR_ADDR; // USART2 DR register
+  uart_init();
 
-  /* 1. Enable clock for GPIOA */
-  *rcc_ahb1enr_ptr |= RCC_AHB1ENR_GPIOAEN_MASK;
-  (void)*rcc_ahb1enr_ptr; // Dummy read to ensure the write is completed
+  bool led_is_on = true;
+  uint32_t last_led_toggle_ms = systick_ms;
+  uint32_t last_uart_report_ms = systick_ms;
 
-  /* 2. Enable clock for USART2 */
-  *rcc_apb1enr_ptr |= RCC_APB1ENR_USART2EN_MASK;
-  (void)*rcc_apb1enr_ptr; // Dummy read to ensure the write is completed
-
-  /* 3. Configure AFRL PA2 and PA3 as AF */
-  /* Select AF7 for PA2 and PA3 */
-  *gpioa_afrl_ptr =
-      (*gpioa_afrl_ptr & ~GPIOA_AFRL_2_3_MASK) | GPIOA_AFRL_2_3_AF;
-
-  /* 4. Configure PA2 and PA3 as AF and PA5 as general-purpose output */
-  /* Clear mode bits for pin 2, 3 and 5 and set mode to AF and output */
-  *gpioa_moder_ptr = (*gpioa_moder_ptr & ~(GPIOA_MODER_MODER_2_3_MASK |
-                                           GPIOA_MODER_MODER_5_MASK)) |
-                     (GPIOA_MODER_MODER_2_3_AF | GPIOA_MODER_MODER_5_OUTPUT);
-
-  /* 5. Writing the calculated baud rate divisor to the BRR register */
-  *usart2_brr_ptr = USART2_BRR_16_MHZ_115200_BAUD_VALUE;
-
-  /* 6. Enable USART2 (UE) and the transmitter (TE) */
-  *usart2_cr1_ptr |= (USART2_CR1_UE | USART2_CR1_TE);
-
-  /* 7. Turn LED on initially (PA5 high) */
-  *gpioa_bsrr_ptr = GPIOA_BSRR_BS5;
-
-  int led_state = 1;
-  volatile uint32_t blink_counter = 0;
-
-  /* Main loop - software delay based blinking */
   while (1) {
-    if (blink_counter >= 1000000u) {
-      if (led_state == 1) {
-        /* Turn LED off (PA5 low) */
-        *gpioa_bsrr_ptr = GPIOA_BSRR_BR5;
+    uint32_t now_ms = systick_ms;
 
-        led_state = 0;
-      } else if (led_state == 0) {
-        /* Turn LED on (PA5 high) */
-        *gpioa_bsrr_ptr = GPIOA_BSRR_BS5;
-
-        led_state = 1;
+    if (now_ms - last_led_toggle_ms >= LED_TOGGLE_DELAY_MS) {
+      if (led_is_on) {
+        *gpioa_bsrr = GPIOA_BSRR_BR5;
+      } else {
+        *gpioa_bsrr = GPIOA_BSRR_BS5;
       }
 
-      /* Sending the string "Hello from STM32!\r\n" via UART */
-      const char *msg = "Hello from STM32!\r\n";
-
-      while (*msg != '\0') {
-        // 1. Waiting for the transmit buffer to become free
-        while ((*usart2_sr_ptr & USART2_TXE) == 0) {
-        }
-
-        // Writing the current character of the string into the data register
-        *usart2_dr_ptr = (uint32_t)(*msg);
-
-        // Moving on to the next symbol
-        msg++;
-      }
-
-      // 2. Waiting for the transmission of the last byte
-      while ((*usart2_sr_ptr & USART2_TC) == 0) {
-      }
-
-      blink_counter = 0;
+      led_is_on = !led_is_on;
+      last_led_toggle_ms = now_ms;
     }
 
-    blink_counter++;
+    if (now_ms - last_uart_report_ms >= UART_REPORT_DELAY_MS) {
+      const char *hex_prefix_cursor = "uptime_s=0x";
+      uint32_t now_s = now_ms / 1000u;
+
+      uart_send_message(hex_prefix_cursor);
+      uart_send_hex32(now_s);
+      uart_send_message("\r\n");
+
+      last_uart_report_ms = now_ms;
+    }
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Vector table                                                               */
-/* Must be placed at the beginning of Flash (usually address 0x08000000)      */
-/* -------------------------------------------------------------------------- */
 const uintptr_t VECTOR_TABLE[102] __attribute__((section(".vector_table"))) = {
-    [0] = (uintptr_t)&STACK_TOP,               // Initial Stack Pointer
-    [1] = (uintptr_t)&Reset_Handler,           // Reset Handler
-    [2 ... 6] = (uintptr_t)&Default_Handler,   // NMI, HardFault, MemManage,
-                                               // BusFault, UsageFault
-    [11] = (uintptr_t)&Default_Handler,        // SVCall
-    [12] = (uintptr_t)&Default_Handler,        // Debug Monitor
-    [14 ... 15] = (uintptr_t)&Default_Handler, // PendSV, SysTick
+    [0] = (uintptr_t)&STACK_TOP,
+    [1] = (uintptr_t)&Reset_Handler,
+    [2 ... 6] = (uintptr_t)&Default_Handler,
+    [11] = (uintptr_t)&Default_Handler,
+    [12] = (uintptr_t)&Default_Handler,
+    [14] = (uintptr_t)&Default_Handler,
+    [15] = (uintptr_t)&SysTick_Handler,
 
-    /* External interrupts (IRQ 0 and above) */
     [16 ... 34] = (uintptr_t)&Default_Handler,
     [39 ... 54] = (uintptr_t)&Default_Handler,
     [56 ... 58] = (uintptr_t)&Default_Handler,
