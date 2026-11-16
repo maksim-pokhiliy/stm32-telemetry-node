@@ -38,4 +38,26 @@ Host: a PC running the serial-to-MQTT bridge from phase 2, and a browser for the
 
 ## Wiring
 
-TBD. Recorded here once the parts arrive and the I2C bus scan (M3) sees both sensors. Phase 3 wiring (servo, rangefinder, separate supply) is recorded at M9 and M10.
+Phase 1, the I2C bus. Confirmed on 16 Nov 2026, when the M3 bus scan found both sensors. The two breakouts sit on the breadboard and share four lines from the Nucleo:
+
+| Line | Nucleo | MPU-6050 (HW-123) | BMP280 (HW-611) |
+|------|--------|-------------------|-----------------|
+| 3.3 V | CN6 pin 4, 3V3 | VCC | VCC |
+| GND | CN6 pin 6 | GND | GND |
+| SCL | CN5 pin 10, D15, PB8 (I2C1_SCL, AF4) | SCL | SCL |
+| SDA | CN5 pin 9, D14, PB9 (I2C1_SDA, AF4) | SDA | SDA |
+
+Both breakouts are powered from the Nucleo's 3V3 pin, not from 5 V. Measured with the multimeter: 3.31 to 3.32 V at the modules, SDA and SCL idle at about 3.31 V, no short between any two of the four lines.
+
+The pull-ups are the ones on the breakouts; the MCU's internal pulls are off. The MPU-6050 board has 2.19 kΩ per line to its regulated rail, the BMP280 board about 9.97 kΩ per line to VCC. In parallel that is about 1.80 kΩ per line, about 1.84 mA through a line held low at 3.3 V.
+
+Addresses, as the boards set them and as the scan confirmed:
+
+| Sensor | Address | Address pins as measured |
+|--------|---------|--------------------------|
+| MPU-6050 | 0x68 | AD0 at 0 V, about 4.65 kΩ to GND on the board |
+| BMP280 | 0x76 | SDO at about 0 V; CSB at about 3.31 V, which selects I2C. The silkscreen calls the SDO pin `SDD` |
+
+The MPU-6050 board carries a 3.3 V regulator between VCC and the chip (the marking reads like MIC5219-3.3, not verified). Fed with 3.3 V it passes the rail through: its input and its output both measure 3.31 V. The pin headers, 8 pins on the MPU-6050 and 6 on the BMP280, were soldered by hand, and each pin was checked for continuity to its pad and against its neighbours.
+
+Phase 3 wiring (servo, rangefinder, separate supply) is recorded at M9 and M10.
