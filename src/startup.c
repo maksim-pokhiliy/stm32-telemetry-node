@@ -1,8 +1,9 @@
-#include <stdbool.h>
-#include <stdint.h>
-
+#include "i2c.h"
+#include "status.h"
 #include "stm32f411_regs.h"
 #include "uart.h"
+#include <stdbool.h>
+#include <stdint.h>
 
 #define LED_TOGGLE_DELAY_MS 500u
 #define UART_REPORT_DELAY_MS 1000u
@@ -84,6 +85,47 @@ int main(void) {
       stk_ctrl_enable_mask | stk_ctrl_tickint_mask | stk_ctrl_clksource_mask;
 
   uart_init();
+
+  status_t i2c_init_result = i2c_init();
+
+  if (i2c_init_result == DRIVER_OK) {
+    uart_send_message("i2c_init: OK\r\n");
+    uart_send_message("scanning...\r\n");
+
+    uint32_t found_count = 0;
+    uint32_t nack_count = 0;
+    uint32_t timeout_count = 0;
+
+    for (uint8_t address = 0x08; address <= 0x77; address++) {
+      status_t probe_status = i2c_probe(address);
+
+      if (probe_status == DRIVER_OK) {
+        uart_send_message("found 0x");
+        uart_send_hex32(address);
+        uart_send_message("\r\n");
+
+        found_count++;
+      } else if (probe_status == DRIVER_NO_ACK) {
+        nack_count++;
+      } else {
+        uart_send_message("TIMEOUT 0x");
+        uart_send_hex32(address);
+        uart_send_message("\r\n");
+
+        timeout_count++;
+      }
+    }
+
+    uart_send_message("scan done: found=");
+    uart_send_hex32(found_count);
+    uart_send_message(" nack=");
+    uart_send_hex32(nack_count);
+    uart_send_message(" timeout=");
+    uart_send_hex32(timeout_count);
+    uart_send_message("\r\n");
+  } else {
+    uart_send_message("i2c_init: FAIL\r\n");
+  }
 
   bool led_is_on = true;
   uint32_t last_led_toggle_ms = systick_ms;

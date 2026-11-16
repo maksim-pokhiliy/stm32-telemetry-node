@@ -4,9 +4,13 @@
 /* RCC */
 #define RCC_AHB1ENR_ADDR 0x40023830u
 #define RCC_APB1ENR_ADDR 0x40023840u
+#define RCC_APB1RSTR_ADDR 0x40023820u
 
 #define RCC_AHB1ENR_GPIOAEN_MASK (1u << 0)
+#define RCC_AHB1ENR_GPIOBEN_MASK (1u << 1)
 #define RCC_APB1ENR_USART2EN_MASK (1u << 17)
+#define RCC_APB1ENR_I2C1EN_MASK (1u << 21)
+#define RCC_APB1RSTR_I2C1RST_MASK (1u << 21)
 
 /* GPIOA */
 #define GPIOA_MODER_ADDR 0x40020000u
@@ -29,6 +33,42 @@
 #define GPIOA_BSRR_BS5 (1u << 5)
 #define GPIOA_BSRR_BR5 (1u << 21)
 
+/* GPIOB */
+#define GPIOB_MODER_ADDR 0x40020400u
+#define GPIOB_OTYPER_ADDR 0x40020404u
+#define GPIOB_OSPEEDR_ADDR 0x40020408u
+#define GPIOB_PUPDR_ADDR 0x4002040Cu
+#define GPIOB_IDR_ADDR 0x40020410u
+#define GPIOB_AFRH_ADDR 0x40020424u
+
+#define GPIOB_MODER_PB8_MASK (3u << 16)
+#define GPIOB_MODER_PB9_MASK (3u << 18)
+#define GPIOB_MODER_PB8_AF (2u << 16)
+#define GPIOB_MODER_PB9_AF (2u << 18)
+
+#define GPIOB_OTYPER_PB8_MASK (1u << 8)
+#define GPIOB_OTYPER_PB9_MASK (1u << 9)
+#define GPIOB_OTYPER_PB8_OD (1u << 8)
+#define GPIOB_OTYPER_PB9_OD (1u << 9)
+
+#define GPIOB_OSPEEDR_PB8_MASK (3u << 16)
+#define GPIOB_OSPEEDR_PB9_MASK (3u << 18)
+#define GPIOB_OSPEEDR_PB8_MEDIUM (1u << 16)
+#define GPIOB_OSPEEDR_PB9_MEDIUM (1u << 18)
+
+#define GPIOB_PUPDR_PB8_MASK (3u << 16)
+#define GPIOB_PUPDR_PB9_MASK (3u << 18)
+#define GPIOB_PUPDR_PB8_NOPULL (0u << 16)
+#define GPIOB_PUPDR_PB9_NOPULL (0u << 18)
+
+#define GPIOB_IDR_PB8_MASK (1u << 8)
+#define GPIOB_IDR_PB9_MASK (1u << 9)
+
+#define GPIOB_AFRH_PB8_MASK (15u << 0)
+#define GPIOB_AFRH_PB9_MASK (15u << 4)
+#define GPIOB_AFRH_PB8_AF4 (4u << 0)
+#define GPIOB_AFRH_PB9_AF4 (4u << 4)
+
 /* USART2 */
 #define USART2_SR_ADDR 0x40004400u
 #define USART2_DR_ADDR 0x40004404u
@@ -39,6 +79,36 @@
 #define USART_SR_TC (1u << 6)
 #define USART_CR1_UE (1u << 13)
 #define USART_CR1_TE (1u << 3)
+
+/* I2C1 */
+#define I2C1_CR1_ADDR 0x40005400u
+#define I2C1_CR2_ADDR 0x40005404u
+#define I2C1_OAR1_ADDR 0x40005408u
+#define I2C1_DR_ADDR 0x40005410u
+#define I2C1_SR1_ADDR 0x40005414u
+#define I2C1_SR2_ADDR 0x40005418u
+#define I2C1_CCR_ADDR 0x4000541Cu
+#define I2C1_TRISE_ADDR 0x40005420u
+
+#define I2C_CR1_PE_MASK (1u << 0)
+#define I2C_CR1_START_MASK (1u << 8)
+#define I2C_CR1_STOP_MASK (1u << 9)
+#define I2C_CR1_SWRST_MASK (1u << 15)
+
+#define I2C_CR2_FREQ_MASK (0x3Fu << 0)
+
+#define I2C_OAR1_BIT14_MASK (1u << 14)
+
+#define I2C_SR1_SB_MASK (1u << 0)
+#define I2C_SR1_ADDR_MASK (1u << 1)
+#define I2C_SR1_AF_MASK (1u << 10)
+
+#define I2C_SR2_BUSY_MASK (1u << 1)
+
+#define I2C_CCR_FS_MASK (1u << 15)
+#define I2C_CCR_CCR_MASK (0xFFFu << 0)
+
+#define I2C_TRISE_TRISE_MASK (0x3Fu << 0)
 
 /* SysTick */
 #define STK_CTRL_ADDR 0xE000E010u
