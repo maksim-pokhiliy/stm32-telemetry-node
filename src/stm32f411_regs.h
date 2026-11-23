@@ -94,6 +94,8 @@
 #define I2C_CR1_START_MASK (1u << 8)
 #define I2C_CR1_STOP_MASK (1u << 9)
 #define I2C_CR1_SWRST_MASK (1u << 15)
+#define I2C_CR1_ACK_MASK (1u << 10)
+#define I2C_CR1_POS_MASK (1u << 11)
 
 #define I2C_CR2_FREQ_MASK (0x3Fu << 0)
 
@@ -102,6 +104,11 @@
 #define I2C_SR1_SB_MASK (1u << 0)
 #define I2C_SR1_ADDR_MASK (1u << 1)
 #define I2C_SR1_AF_MASK (1u << 10)
+#define I2C_SR1_BERR_MASK (1u << 8)
+#define I2C_SR1_ARLO_MASK (1u << 9)
+#define I2C_SR1_CLEAR_AF 0xDB00u
+#define I2C_SR1_BTF_MASK (1u << 2)
+#define I2C_SR1_RxNE_MASK (1u << 6)
 
 #define I2C_SR2_BUSY_MASK (1u << 1)
 

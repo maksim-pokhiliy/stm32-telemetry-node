@@ -1,6 +1,14 @@
 #ifndef STATUS_H
 #define STATUS_H
 
-typedef enum { DRIVER_OK, DRIVER_NO_ACK, DRIVER_TIMEOUT } status_t;
+typedef enum {
+  DRIVER_OK,
+  DRIVER_NO_ACK_ADDR,
+  DRIVER_NO_ACK_DATA,
+  DRIVER_TIMEOUT,
+  DRIVER_INVALID_ARG,
+  DRIVER_WRONG_ID,
+  DRIVER_BUS_ERROR
+} status_t;
 
 #endif

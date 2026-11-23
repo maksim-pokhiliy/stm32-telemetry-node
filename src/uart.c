@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #define USART2_BRR_16MHZ_115200 0x008Bu
+#define UART_INT32_MAX_DIGITS 10u
 
 void uart_init(void) {
   volatile uint32_t *const rcc_ahb1enr = (volatile uint32_t *)RCC_AHB1ENR_ADDR;
@@ -71,5 +72,30 @@ void uart_send_hex32(uint32_t value) {
     }
 
     uart_send_byte(ascii_symbol);
+  }
+}
+
+void uart_send_int32(int32_t value) {
+  uint8_t digits[UART_INT32_MAX_DIGITS];
+  uint32_t digit_count = 0u;
+  uint32_t magnitude = (uint32_t)value;
+
+  if (value < 0) {
+    magnitude = 0u - magnitude;
+
+    uart_send_byte('-');
+  }
+
+  do {
+    digits[digit_count] = (uint8_t)('0' + (magnitude % 10u));
+    digit_count++;
+
+    magnitude /= 10u;
+  } while (magnitude != 0u);
+
+  while (digit_count > 0u) {
+    digit_count--;
+
+    uart_send_byte(digits[digit_count]);
   }
 }
