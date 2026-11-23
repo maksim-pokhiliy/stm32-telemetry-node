@@ -60,4 +60,6 @@ Addresses, as the boards set them and as the scan confirmed:
 
 The MPU-6050 board carries a 3.3 V regulator between VCC and the chip (the marking reads like MIC5219-3.3, not verified). Fed with 3.3 V it passes the rail through: its input and its output both measure 3.31 V. The pin headers, 8 pins on the MPU-6050 and 6 on the BMP280, were soldered by hand, and each pin was checked for continuity to its pad and against its neighbours.
 
+Read back over the bus in M4, 23 Nov 2026: the identity register of the MPU-6050 (0x75) holds 0x68 and the id register of the BMP280 (0xD0) holds 0x58. On the MPU-6050 unit in use, at the ±2 g range where 16384 counts per g is nominal, the Z accelerometer axis averaged about 13100 counts with the breadboard face up and about -20700 face down. The two positions were set by hand, the cause is not established, and nothing is corrected. The spare MPU-6050 breakout has not been tried.
+
 Phase 3 wiring (servo, rangefinder, separate supply) is recorded at M9 and M10.
