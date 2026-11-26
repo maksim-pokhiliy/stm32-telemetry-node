@@ -26,6 +26,8 @@ static void uptime_report(uint32_t now_ms);
 static void mpu_print_sample(const mpu6050_sample_t *sample);
 static void mpu_stream_step(void);
 static void mpu_print_temp_centi(int16_t raw);
+static void user_button_init(void);
+static bool user_button_is_pressed(void);
 
 static void mpu_print_sample(const mpu6050_sample_t *sample) {
   const int16_t values[MPU_SAMPLE_VALUE_COUNT] = {
@@ -48,6 +50,15 @@ static void mpu_stream_step(void) {
   status_t status = mpu6050_read_sample(&mpu_sample);
 
   if (status == DRIVER_OK) {
+    static bool first_sample_reported = false;
+
+    if (!first_sample_reported) {
+      uart_send_decimal("boot_first_sample_ms=", systick_get_ms());
+      uart_send_message("\r\n");
+
+      first_sample_reported = true;
+    }
+
     mpu_ok_count++;
 
     mpu_print_sample(&mpu_sample);
@@ -96,6 +107,27 @@ static void uptime_report(uint32_t now_ms) {
   mpu_other_count = 0u;
 }
 
+static void user_button_init(void) {
+  volatile uint32_t *const rcc_ahb1enr = (volatile uint32_t *)RCC_AHB1ENR_ADDR;
+  volatile uint32_t *const gpioc_moder = (volatile uint32_t *)GPIOC_MODER_ADDR;
+  volatile uint32_t *const gpioc_pupdr = (volatile uint32_t *)GPIOC_PUPDR_ADDR;
+
+  *rcc_ahb1enr |= RCC_AHB1ENR_GPIOCEN_MASK;
+  (void)*rcc_ahb1enr;
+
+  *gpioc_moder =
+      (*gpioc_moder & ~GPIOC_MODER_PC13_MASK) | GPIOC_MODER_PC13_INPUT;
+
+  *gpioc_pupdr =
+      (*gpioc_pupdr & ~GPIOC_PUPDR_PC13_MASK) | GPIOC_PUPDR_PC13_NOPULL;
+}
+
+static bool user_button_is_pressed(void) {
+  volatile uint32_t *const gpioc_idr = (volatile uint32_t *)GPIOC_IDR_ADDR;
+
+  return (*gpioc_idr & GPIOC_IDR_PC13_MASK) == 0u;
+}
+
 int main(void) {
   volatile uint32_t *const gpioa_moder = (volatile uint32_t *)GPIOA_MODER_ADDR;
   volatile uint32_t *const gpioa_bsrr = (volatile uint32_t *)GPIOA_BSRR_ADDR;
@@ -113,7 +145,15 @@ int main(void) {
   systick_init();
 
   uart_init();
-  selftest_run_temp();
+  user_button_init();
+
+  bool selftest_requested = user_button_is_pressed();
+
+  if (selftest_requested) {
+    uart_send_message("boot mode: SELFTEST\r\n");
+  } else {
+    uart_send_message("boot mode: NORMAL\r\n");
+  }
 
   bool mpu_is_ready = false;
 
@@ -122,14 +162,16 @@ int main(void) {
   if (i2c_init_result == DRIVER_OK) {
     uart_send_message("i2c_init: OK\r\n");
 
+    if (selftest_requested) {
+      selftest_run();
+    }
+
     status_t mpu_init_result = mpu6050_init();
 
     uart_send_value("mpu6050_init: status=0x", (uint32_t)mpu_init_result);
     uart_send_message("\r\n");
 
     mpu_is_ready = (mpu_init_result == DRIVER_OK);
-
-    selftest_run_bus();
   } else {
     uart_send_message("i2c_init: FAIL\r\n");
   }

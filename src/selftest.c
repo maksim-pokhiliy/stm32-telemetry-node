@@ -820,9 +820,8 @@ static void i2c_selftest(void) {
   i2c_test_verdict("test 19 (100x 24-byte calib)", is_full100_passed);
 }
 
-void selftest_run_temp(void) { mpu_temp_selftest(); }
-
-void selftest_run_bus(void) {
+void selftest_run(void) {
+  mpu_temp_selftest();
   (void)i2c_scan();
   i2c_selftest();
 }
