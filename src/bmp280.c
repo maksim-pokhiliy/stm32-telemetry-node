@@ -33,6 +33,11 @@ _Static_assert((int16_t)(uint16_t)0x8000u == -32768,
 _Static_assert((-8 >> 1) == -4, "signed right shift must be arithmetic");
 _Static_assert((int32_t)0x80000000u >> 1 == (int32_t)0xC0000000u,
                "signed right shift of INT32_MIN must be arithmetic");
+_Static_assert((int64_t)-8 >> 1 == (int64_t)-4,
+               "signed right shift of int64_t must be arithmetic");
+_Static_assert((int64_t)0x8000000000000000u >> 1 ==
+                   (int64_t)0xC000000000000000u,
+               "signed right shift of INT64_MIN must be arithmetic");
 
 static bmp280_calib_t bmp280_calib;
 static bool bmp280_calib_valid = false;
@@ -185,6 +190,83 @@ status_t bmp280_compensate_temp(uint32_t raw_temp, const bmp280_calib_t *calib,
 
   *t_fine = fine;
   *temp_centi = (fine * 5 + 128) >> 8;
+
+  return DRIVER_OK;
+}
+
+status_t bmp280_compensate_press(uint32_t raw_press,
+                                 const bmp280_calib_t *calib, int32_t t_fine,
+                                 uint32_t *press_q24_8) {
+  if (calib == NULL || press_q24_8 == NULL) {
+    return DRIVER_INVALID_ARG;
+  }
+
+  if (raw_press > 0xFFFFFu) {
+    return DRIVER_INVALID_ARG;
+  }
+
+  const int64_t adc_P = (int64_t)raw_press;
+  const int64_t dig_P1 = (int64_t)calib->dig_P1;
+  const int64_t dig_P2 = (int64_t)calib->dig_P2;
+  const int64_t dig_P3 = (int64_t)calib->dig_P3;
+  const int64_t dig_P4 = (int64_t)calib->dig_P4;
+  const int64_t dig_P5 = (int64_t)calib->dig_P5;
+  const int64_t dig_P6 = (int64_t)calib->dig_P6;
+  const int64_t dig_P7 = (int64_t)calib->dig_P7;
+  const int64_t dig_P8 = (int64_t)calib->dig_P8;
+  const int64_t dig_P9 = (int64_t)calib->dig_P9;
+
+  int64_t var1 = (int64_t)t_fine - 128000;
+  int64_t var2 = var1 * var1 * dig_P6;
+  var2 = var2 + (var1 * dig_P5 * 131072);
+  var2 = var2 + (dig_P4 * 34359738368);
+
+  var1 = ((var1 * var1 * dig_P3) >> 8) + (var1 * dig_P2 * 4096);
+  var1 = ((((int64_t)1 << 47) + var1) * dig_P1) >> 33;
+
+  if (var1 == 0) {
+    return DRIVER_INVALID_ARG;
+  }
+
+  int64_t p = 1048576 - adc_P;
+  p = (((p << 31) - var2) * 3125) / var1;
+
+  var1 = ((dig_P9 * (p >> 13) * (p >> 13)) >> 25);
+  var2 = ((dig_P8 * p) >> 19);
+  p = ((p + var1 + var2) >> 8) + (dig_P7 * 16);
+
+  *press_q24_8 = (uint32_t)p;
+
+  return DRIVER_OK;
+}
+
+status_t bmp280_compensate(const bmp280_raw_sample_t *raw,
+                           const bmp280_calib_t *calib,
+                           bmp280_sample_t *sample) {
+  if (raw == NULL || calib == NULL || sample == NULL) {
+    return DRIVER_INVALID_ARG;
+  }
+
+  int32_t temp_centi = 0;
+  int32_t t_fine = 0;
+
+  status_t status =
+      bmp280_compensate_temp(raw->raw_temp, calib, &temp_centi, &t_fine);
+
+  if (status != DRIVER_OK) {
+    return status;
+  }
+
+  uint32_t press_q24_8 = 0;
+
+  status = bmp280_compensate_press(raw->raw_press, calib, t_fine, &press_q24_8);
+
+  if (status != DRIVER_OK) {
+    return status;
+  }
+
+  sample->temp_centi = temp_centi;
+  sample->press_q24_8 = press_q24_8;
 
   return DRIVER_OK;
 }

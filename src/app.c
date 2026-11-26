@@ -128,24 +128,26 @@ static void user_button_init(void) {
 }
 
 static void bmp280_stream_step(void) {
-  bmp280_raw_sample_t sample;
+  bmp280_raw_sample_t raw;
 
-  status_t status = bmp280_read_raw(&sample);
+  status_t status = bmp280_read_raw(&raw);
 
   if (status == DRIVER_OK) {
     const bmp280_calib_t *calib = bmp280_get_calibration();
-    int32_t temp_centi = 0;
-    int32_t t_fine = 0;
 
-    uart_send_decimal("bmp raw_press=", sample.raw_press);
-    uart_send_decimal(" raw_temp=", sample.raw_temp);
+    uart_send_decimal("bmp raw_press=", raw.raw_press);
+    uart_send_decimal(" raw_temp=", raw.raw_temp);
 
     if (calib != NULL) {
-      status_t comp_status =
-          bmp280_compensate_temp(sample.raw_temp, calib, &temp_centi, &t_fine);
+      bmp280_sample_t sample = {0};
+
+      status_t comp_status = bmp280_compensate(&raw, calib, &sample);
 
       if (comp_status == DRIVER_OK) {
-        uart_send_decimal(" temp_centi=", (uint32_t)temp_centi);
+        uart_send_message(" temp_centi=");
+        uart_send_int32(sample.temp_centi);
+        uart_send_decimal(" press_q24_8=", sample.press_q24_8);
+        uart_send_decimal(" press_pa=", sample.press_q24_8 >> 8);
       }
     }
 

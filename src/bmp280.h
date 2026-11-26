@@ -24,11 +24,24 @@ typedef struct {
   uint32_t raw_temp;
 } bmp280_raw_sample_t;
 
+typedef struct {
+  int32_t temp_centi;
+  uint32_t press_q24_8;
+} bmp280_sample_t;
+
 status_t bmp280_init(void);
 const bmp280_calib_t *bmp280_get_calibration(void);
 status_t bmp280_read_raw(bmp280_raw_sample_t *sample);
 
 status_t bmp280_compensate_temp(uint32_t raw_temp, const bmp280_calib_t *calib,
                                 int32_t *temp_centi, int32_t *t_fine);
+
+status_t bmp280_compensate_press(uint32_t raw_press,
+                                 const bmp280_calib_t *calib, int32_t t_fine,
+                                 uint32_t *press_q24_8);
+
+status_t bmp280_compensate(const bmp280_raw_sample_t *raw,
+                           const bmp280_calib_t *calib,
+                           bmp280_sample_t *sample);
 
 #endif

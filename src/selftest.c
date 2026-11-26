@@ -36,6 +36,7 @@
 
 static void mpu_temp_selftest(void);
 static void bmp_temp_selftest(void);
+static void bmp_press_selftest(void);
 static void i2c_test_verdict(const char *label, bool is_passed);
 static uint32_t i2c_scan(void);
 static void i2c_selftest(void);
@@ -82,6 +83,7 @@ static void bmp_temp_selftest(void) {
   } cases[] = {
       {519888u, 27504u, 26435, -1000, 2508, 128422, "bosch §3.12"},
       {532096u, 28492u, 26521, 50, 2410, 123400, "real sample"},
+      {400000u, 28492u, 26521, 50, -1766, -90432, "negative"},
   };
 
   bool is_passed = true;
@@ -117,6 +119,64 @@ static void bmp_temp_selftest(void) {
   }
 
   i2c_test_verdict("bmp temp compensation", is_passed);
+}
+
+static void bmp_press_selftest(void) {
+  static const bmp280_calib_t bosch_calib = {
+      .dig_T1 = 27504,
+      .dig_T2 = 26435,
+      .dig_T3 = -1000,
+      .dig_P1 = 36477,
+      .dig_P2 = -10685,
+      .dig_P3 = 3024,
+      .dig_P4 = 2855,
+      .dig_P5 = 140,
+      .dig_P6 = -7,
+      .dig_P7 = 15500,
+      .dig_P8 = -14600,
+      .dig_P9 = 6000,
+  };
+
+  const bmp280_raw_sample_t raw = {
+      .raw_press = 415148u,
+      .raw_temp = 519888u,
+  };
+
+  bool is_passed = true;
+
+  uart_send_message("bmp press test...\r\n");
+
+  bmp280_sample_t sample = {0};
+
+  status_t status = bmp280_compensate(&raw, &bosch_calib, &sample);
+
+  uart_send_message("bosch §3.12 press_q24_8=");
+  uart_send_uint32(sample.press_q24_8);
+  uart_send_message("\r\n");
+
+  const int32_t expected = 25767233;
+  const int32_t got = (int32_t)sample.press_q24_8;
+  const int32_t diff = got - expected;
+
+  if (status != DRIVER_OK || diff < -4 || diff > 4) {
+    is_passed = false;
+  }
+
+  uint32_t sentinel = 0xDEADBEEFu;
+  bmp280_calib_t zero_p1 = bosch_calib;
+  zero_p1.dig_P1 = 0;
+
+  status = bmp280_compensate_press(raw.raw_press, &zero_p1, 128422, &sentinel);
+
+  uart_send_value("zero denom status=0x", (uint32_t)status);
+  uart_send_value(" sentinel=0x", sentinel);
+  uart_send_message("\r\n");
+
+  if (status != DRIVER_INVALID_ARG || sentinel != 0xDEADBEEFu) {
+    is_passed = false;
+  }
+
+  i2c_test_verdict("bmp press compensation", is_passed);
 }
 
 static void i2c_test_verdict(const char *label, bool is_passed) {
@@ -840,6 +900,7 @@ static void i2c_selftest(void) {
 
     if (st != DRIVER_OK) {
       fail_18++;
+
       continue;
     }
 
@@ -877,6 +938,7 @@ static void i2c_selftest(void) {
 void selftest_run(void) {
   mpu_temp_selftest();
   bmp_temp_selftest();
+  bmp_press_selftest();
   (void)i2c_scan();
   i2c_selftest();
 }
