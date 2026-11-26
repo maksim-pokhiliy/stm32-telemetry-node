@@ -24,19 +24,11 @@ _Static_assert((int16_t)(uint16_t)0xF220u == -3552,
                "uint16_t -> int16_t must wrap modulo 2^16");
 
 static int16_t mpu6050_make_int16(uint8_t high, uint8_t low);
-static void mpu6050_delay_ms(uint32_t duration_ms);
 
 static int16_t mpu6050_make_int16(uint8_t high, uint8_t low) {
   uint16_t raw = (uint16_t)(((uint16_t)high << 8) | low);
 
   return (int16_t)raw;
-}
-
-static void mpu6050_delay_ms(uint32_t duration_ms) {
-  uint32_t start_ms = systick_get_ms();
-
-  while ((systick_get_ms() - start_ms) <= duration_ms) {
-  }
 }
 
 status_t mpu6050_init(void) {
@@ -60,7 +52,7 @@ status_t mpu6050_init(void) {
     return status;
   }
 
-  mpu6050_delay_ms(MPU6050_WAKE_DELAY_MS);
+  systick_delay_ms(MPU6050_WAKE_DELAY_MS);
 
   return DRIVER_OK;
 }

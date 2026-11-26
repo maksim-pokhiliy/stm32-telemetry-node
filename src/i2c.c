@@ -133,7 +133,7 @@ static status_t i2c_wait_flag(volatile uint32_t *reg, uint32_t mask,
       return DRIVER_OK;
     }
 
-    if ((systick_get_ms() - start_ms) >= I2C_TIMEOUT_MS) {
+    if (systick_elapsed_ms(systick_get_ms(), start_ms) >= I2C_TIMEOUT_MS) {
       return DRIVER_TIMEOUT;
     }
   }
@@ -160,7 +160,7 @@ static status_t i2c_wait_lines_high(void) {
       return DRIVER_OK;
     }
 
-    if ((systick_get_ms() - start_ms) >= I2C_TIMEOUT_MS) {
+    if (systick_elapsed_ms(systick_get_ms(), start_ms) >= I2C_TIMEOUT_MS) {
       return DRIVER_TIMEOUT;
     }
   }
@@ -249,7 +249,7 @@ static status_t i2c_wait_sr1(volatile uint32_t *sr1, uint32_t success_mask,
       return DRIVER_OK;
     }
 
-    if ((systick_get_ms() - start_ms) >= I2C_TIMEOUT_MS) {
+    if (systick_elapsed_ms(systick_get_ms(), start_ms) >= I2C_TIMEOUT_MS) {
       return DRIVER_TIMEOUT;
     }
   }

@@ -184,7 +184,7 @@ int main(void) {
   while (1) {
     uint32_t now_ms = systick_get_ms();
 
-    if (now_ms - last_led_toggle_ms >= LED_TOGGLE_DELAY_MS) {
+    if (systick_elapsed_ms(now_ms, last_led_toggle_ms) >= LED_TOGGLE_DELAY_MS) {
       if (led_is_on) {
         *gpioa_bsrr = GPIOA_BSRR_BR5;
       } else {
@@ -195,13 +195,15 @@ int main(void) {
       last_led_toggle_ms = now_ms;
     }
 
-    if (mpu_is_ready && (now_ms - last_sample_ms >= MPU_SAMPLE_PERIOD_MS)) {
+    if (mpu_is_ready &&
+        (systick_elapsed_ms(now_ms, last_sample_ms) >= MPU_SAMPLE_PERIOD_MS)) {
       mpu_stream_step();
 
       last_sample_ms = now_ms;
     }
 
-    if (now_ms - last_uptime_report_ms >= UART_REPORT_DELAY_MS) {
+    if (systick_elapsed_ms(now_ms, last_uptime_report_ms) >=
+        UART_REPORT_DELAY_MS) {
       uptime_report(now_ms);
 
       last_uptime_report_ms = now_ms;

@@ -22,3 +22,18 @@ void systick_init(void) {
 }
 
 uint32_t systick_get_ms(void) { return systick_ms; }
+
+uint32_t systick_elapsed_ms(uint32_t now_ms, uint32_t start_ms) {
+  return now_ms - start_ms;
+}
+
+void systick_delay_ms(uint32_t duration_ms) {
+  if (duration_ms == 0u) {
+    return;
+  }
+
+  uint32_t start_ms = systick_get_ms();
+
+  while (systick_elapsed_ms(systick_get_ms(), start_ms) <= duration_ms) {
+  }
+}
