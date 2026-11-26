@@ -30,9 +30,9 @@
 
 _Static_assert((int16_t)(uint16_t)0x8000u == -32768,
                "uint16_t -> int16_t must wrap modulo 2^16");
-
-_Static_assert((int16_t)(uint16_t)0xF220u == -3552,
-               "uint16_t -> int16_t must wrap modulo 2^16");
+_Static_assert((-8 >> 1) == -4, "signed right shift must be arithmetic");
+_Static_assert((int32_t)0x80000000u >> 1 == (int32_t)0xC0000000u,
+               "signed right shift of INT32_MIN must be arithmetic");
 
 static bmp280_calib_t bmp280_calib;
 static bool bmp280_calib_valid = false;
@@ -158,6 +158,35 @@ const bmp280_calib_t *bmp280_get_calibration(void) {
   }
 
   return &bmp280_calib;
+}
+
+status_t bmp280_compensate_temp(uint32_t raw_temp, const bmp280_calib_t *calib,
+                                int32_t *temp_centi, int32_t *t_fine) {
+  if (calib == NULL || temp_centi == NULL || t_fine == NULL) {
+    return DRIVER_INVALID_ARG;
+  }
+
+  if (raw_temp > 0xFFFFFu) {
+    return DRIVER_INVALID_ARG;
+  }
+
+  const int32_t adc_T = (int32_t)raw_temp;
+  const int32_t dig_T1 = (int32_t)calib->dig_T1;
+  const int32_t dig_T2 = (int32_t)calib->dig_T2;
+  const int32_t dig_T3 = (int32_t)calib->dig_T3;
+
+  const int32_t var1 = ((((adc_T >> 3) - (dig_T1 << 1)) * dig_T2) >> 11);
+
+  const int32_t var2 =
+      ((((((adc_T >> 4) - dig_T1) * ((adc_T >> 4) - dig_T1)) >> 12) * dig_T3) >>
+       14);
+
+  const int32_t fine = var1 + var2;
+
+  *t_fine = fine;
+  *temp_centi = (fine * 5 + 128) >> 8;
+
+  return DRIVER_OK;
 }
 
 status_t bmp280_read_raw(bmp280_raw_sample_t *sample) {

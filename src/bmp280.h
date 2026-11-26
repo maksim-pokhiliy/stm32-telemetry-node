@@ -28,4 +28,7 @@ status_t bmp280_init(void);
 const bmp280_calib_t *bmp280_get_calibration(void);
 status_t bmp280_read_raw(bmp280_raw_sample_t *sample);
 
+status_t bmp280_compensate_temp(uint32_t raw_temp, const bmp280_calib_t *calib,
+                                int32_t *temp_centi, int32_t *t_fine);
+
 #endif

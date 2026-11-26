@@ -1,4 +1,5 @@
 #include "selftest.h"
+#include "bmp280.h"
 #include "conversions.h"
 #include "i2c.h"
 #include "status.h"
@@ -34,6 +35,7 @@
 #define I2C_TEST_PWR_VAL_PLL 0x01u
 
 static void mpu_temp_selftest(void);
+static void bmp_temp_selftest(void);
 static void i2c_test_verdict(const char *label, bool is_passed);
 static uint32_t i2c_scan(void);
 static void i2c_selftest(void);
@@ -66,6 +68,55 @@ static void mpu_temp_selftest(void) {
   }
 
   i2c_test_verdict("temp conversion table", is_passed);
+}
+
+static void bmp_temp_selftest(void) {
+  static const struct {
+    uint32_t raw_temp;
+    uint16_t dig_T1;
+    int16_t dig_T2;
+    int16_t dig_T3;
+    int32_t expected_temp_centi;
+    int32_t expected_t_fine;
+    const char *label;
+  } cases[] = {
+      {519888u, 27504u, 26435, -1000, 2508, 128422, "bosch §3.12"},
+      {532096u, 28492u, 26521, 50, 2410, 123400, "real sample"},
+  };
+
+  bool is_passed = true;
+
+  uart_send_message("bmp temp test...\r\n");
+
+  for (uint32_t i = 0u; i < sizeof cases / sizeof cases[0]; i++) {
+    bmp280_calib_t calib = {
+        .dig_T1 = cases[i].dig_T1,
+        .dig_T2 = cases[i].dig_T2,
+        .dig_T3 = cases[i].dig_T3,
+    };
+
+    int32_t temp_centi = 0;
+    int32_t t_fine = 0;
+
+    status_t status =
+        bmp280_compensate_temp(cases[i].raw_temp, &calib, &temp_centi, &t_fine);
+
+    uart_send_message(cases[i].label);
+    uart_send_message(" raw=");
+    uart_send_uint32(cases[i].raw_temp);
+    uart_send_message(" temp_centi=");
+    uart_send_int32(temp_centi);
+    uart_send_message(" t_fine=");
+    uart_send_int32(t_fine);
+    uart_send_message("\r\n");
+
+    if (status != DRIVER_OK || temp_centi != cases[i].expected_temp_centi ||
+        t_fine != cases[i].expected_t_fine) {
+      is_passed = false;
+    }
+  }
+
+  i2c_test_verdict("bmp temp compensation", is_passed);
 }
 
 static void i2c_test_verdict(const char *label, bool is_passed) {
@@ -825,6 +876,7 @@ static void i2c_selftest(void) {
 
 void selftest_run(void) {
   mpu_temp_selftest();
+  bmp_temp_selftest();
   (void)i2c_scan();
   i2c_selftest();
 }
