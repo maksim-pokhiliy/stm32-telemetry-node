@@ -7,12 +7,22 @@
 
 #define MPU6050_ADDR 0x68u
 
+#define MPU6050_REG_SMPLRT_DIV 0x19u
+#define MPU6050_REG_CONFIG 0x1Au
+#define MPU6050_REG_GYRO_CONFIG 0x1Bu
+#define MPU6050_REG_ACCEL_CONFIG 0x1Cu
 #define MPU6050_REG_ACCEL_XOUT_H 0x3Bu
 #define MPU6050_REG_PWR_MGMT_1 0x6Bu
+#define MPU6050_REG_PWR_MGMT_2 0x6Cu
 #define MPU6050_REG_WHO_AM_I 0x75u
 
 #define MPU6050_WHO_AM_I_VALUE 0x68u
 #define MPU6050_PWR_MGMT_1_WAKE_PLL 0x01u
+#define MPU6050_PWR_MGMT_2_ALL_ON 0x00u
+#define MPU6050_CONFIG_DLPF_OFF 0x00u
+#define MPU6050_SMPLRT_DIV_NONE 0x00u
+#define MPU6050_GYRO_CONFIG_250DPS 0x00u
+#define MPU6050_ACCEL_CONFIG_2G 0x00u
 
 #define MPU6050_WAKE_DELAY_MS 100u
 #define MPU6050_SAMPLE_LEN 14u
@@ -53,6 +63,36 @@ status_t mpu6050_init(void) {
   }
 
   systick_delay_ms(MPU6050_WAKE_DELAY_MS);
+
+  status = i2c_write_reg(MPU6050_ADDR, MPU6050_REG_PWR_MGMT_2,
+                         MPU6050_PWR_MGMT_2_ALL_ON);
+  if (status != DRIVER_OK) {
+    return status;
+  }
+
+  status =
+      i2c_write_reg(MPU6050_ADDR, MPU6050_REG_CONFIG, MPU6050_CONFIG_DLPF_OFF);
+  if (status != DRIVER_OK) {
+    return status;
+  }
+
+  status = i2c_write_reg(MPU6050_ADDR, MPU6050_REG_SMPLRT_DIV,
+                         MPU6050_SMPLRT_DIV_NONE);
+  if (status != DRIVER_OK) {
+    return status;
+  }
+
+  status = i2c_write_reg(MPU6050_ADDR, MPU6050_REG_GYRO_CONFIG,
+                         MPU6050_GYRO_CONFIG_250DPS);
+  if (status != DRIVER_OK) {
+    return status;
+  }
+
+  status = i2c_write_reg(MPU6050_ADDR, MPU6050_REG_ACCEL_CONFIG,
+                         MPU6050_ACCEL_CONFIG_2G);
+  if (status != DRIVER_OK) {
+    return status;
+  }
 
   return DRIVER_OK;
 }
