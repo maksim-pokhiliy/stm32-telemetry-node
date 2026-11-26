@@ -37,11 +37,6 @@
 #define UART_REPORT_DELAY_MS 1000u
 #define SYSTICK_RELOAD_16MHZ_1MS 15999u
 
-#define MPU_WAKE_DELAY_MS 100u
-#define MPU_DATA_START_REG 0x3Bu
-#define MPU_DATA_LEN 14u
-#define MPU_RAW_PACKET_COUNT 3u
-#define MPU_REG_GYRO_CONFIG 0x1Bu
 #define MPU_SAMPLE_PERIOD_MS 100u
 #define MPU_SAMPLE_VALUE_COUNT 7u
 #define MPU_TEMP_LSB_PER_DEGREE 340
@@ -58,10 +53,6 @@ extern unsigned char BSS_SRAM_END;
 volatile uint32_t systick_ms = 0u;
 
 static mpu6050_sample_t mpu_sample;
-static uint8_t mpu_config[2];
-static volatile status_t mpu_init_status;
-static volatile status_t mpu_config_status;
-static volatile status_t mpu_sample_status;
 static uint32_t mpu_ok_count;
 static uint32_t mpu_nack_count;
 static uint32_t mpu_timeout_count;
@@ -75,11 +66,9 @@ void SysTick_Handler(void);
 int main(void);
 
 static void uptime_report(uint32_t now_ms);
-static void delay_ms(uint32_t duration_ms);
 
 static void uart_send_value(const char *label, uint32_t value);
 static void uart_send_decimal(const char *label, uint32_t value);
-static void uart_int32_selftest(void) __attribute__((unused));
 
 static uint32_t i2c_scan(void);
 static void i2c_selftest(void);
@@ -90,9 +79,6 @@ static void mpu_stream_step(void);
 static int32_t mpu_temp_raw_to_centi(int16_t raw);
 static void mpu_temp_selftest(void);
 static void mpu_print_temp_centi(int16_t raw);
-static void mpu_wake_experiment(void) __attribute__((unused));
-static void mpu_read_raw_packets(void) __attribute__((unused));
-static void mpu_check(void) __attribute__((unused));
 
 void Reset_Handler(void) {
   const uint32_t *flash_data = (const uint32_t *)&DATA_FLASH_IMAGE_START;
@@ -125,13 +111,6 @@ void Default_Handler(void) {
 
 void SysTick_Handler(void) { systick_ms++; }
 
-static void delay_ms(uint32_t duration_ms) {
-  uint32_t start_ms = systick_ms;
-
-  while ((systick_ms - start_ms) <= duration_ms) {
-  }
-}
-
 static void uart_send_value(const char *label, uint32_t value) {
   uart_send_message(label);
   uart_send_hex32(value);
@@ -140,86 +119,6 @@ static void uart_send_value(const char *label, uint32_t value) {
 static void uart_send_decimal(const char *label, uint32_t value) {
   uart_send_message(label);
   uart_send_int32((int32_t)value);
-}
-
-static void uart_int32_selftest(void) {
-  static const int32_t values[] = {
-      0, 1, -1, 32767, -32768, INT32_MAX, INT32_MIN, 10020,
-  };
-
-  uart_send_message("int32 test...\r\n");
-
-  for (uint32_t i = 0u; i < sizeof values / sizeof values[0]; i++) {
-    uart_send_byte('[');
-    uart_send_int32(values[i]);
-    uart_send_message("]\r\n");
-  }
-}
-
-static void mpu_wake_experiment(void) {
-  uint8_t pwr_before = 0xAA;
-
-  status_t before_status =
-      i2c_read_reg(I2C_TEST_DEV_ADDR, I2C_TEST_PWR_REG, &pwr_before, 1);
-
-  uart_send_value("pwr before: status=0x", (uint32_t)before_status);
-  uart_send_value(" value=0x", pwr_before);
-  uart_send_message("\r\n");
-
-  status_t write_status =
-      i2c_write_reg(I2C_TEST_DEV_ADDR, I2C_TEST_PWR_REG, I2C_TEST_PWR_VAL_PLL);
-
-  uart_send_value("pwr write:  status=0x", (uint32_t)write_status);
-  uart_send_message("\r\n");
-
-  uint8_t pwr_after = 0xAA;
-
-  status_t after_status =
-      i2c_read_reg(I2C_TEST_DEV_ADDR, I2C_TEST_PWR_REG, &pwr_after, 1);
-
-  uart_send_value("pwr after:  status=0x", (uint32_t)after_status);
-  uart_send_value(" value=0x", pwr_after);
-  uart_send_message("\r\n");
-
-  delay_ms(MPU_WAKE_DELAY_MS);
-}
-
-static void mpu_read_raw_packets(void) {
-  for (uint32_t packet = 0u; packet < MPU_RAW_PACKET_COUNT; packet++) {
-    uint8_t raw[MPU_DATA_LEN];
-
-    for (uint32_t i = 0u; i < MPU_DATA_LEN; i++) {
-      raw[i] = 0xAA;
-    }
-
-    uint32_t recover_before = i2c_get_recover_count();
-
-    status_t status =
-        i2c_read_reg(I2C_TEST_DEV_ADDR, MPU_DATA_START_REG, raw, MPU_DATA_LEN);
-
-    uint32_t recover_delta = i2c_get_recover_count() - recover_before;
-
-    uart_send_value("mpu raw 0x", packet);
-    uart_send_value(": status=0x", (uint32_t)status);
-    uart_send_value(" recover=0x", recover_delta);
-    uart_send_message("\r\n");
-
-    for (uint32_t i = 0u; i < MPU_DATA_LEN; i++) {
-      uart_send_byte(' ');
-      uart_send_hex32(raw[i]);
-    }
-
-    uart_send_message("\r\n");
-  }
-}
-
-static void mpu_check(void) {
-  mpu_init_status = mpu6050_init();
-
-  mpu_config_status =
-      i2c_read_reg(I2C_TEST_DEV_ADDR, MPU_REG_GYRO_CONFIG, mpu_config, 2);
-
-  mpu_sample_status = mpu6050_read_sample(&mpu_sample);
 }
 
 static void mpu_print_sample(const mpu6050_sample_t *sample) {
