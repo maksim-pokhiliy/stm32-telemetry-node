@@ -35,7 +35,6 @@
 
 #define LED_TOGGLE_DELAY_MS 500u
 #define UART_REPORT_DELAY_MS 1000u
-#define SYSTICK_RELOAD_16MHZ_1MS 15999u
 
 #define MPU_SAMPLE_PERIOD_MS 100u
 #define MPU_SAMPLE_VALUE_COUNT 7u
@@ -50,8 +49,6 @@ extern unsigned char DATA_SRAM_END;
 extern unsigned char BSS_SRAM_START;
 extern unsigned char BSS_SRAM_END;
 
-volatile uint32_t systick_ms = 0u;
-
 static mpu6050_sample_t mpu_sample;
 static uint32_t mpu_ok_count;
 static uint32_t mpu_nack_count;
@@ -61,7 +58,7 @@ static uint32_t mpu_other_count;
 
 void Reset_Handler(void);
 void Default_Handler(void);
-void SysTick_Handler(void);
+extern void SysTick_Handler(void);
 
 int main(void);
 
@@ -108,8 +105,6 @@ void Default_Handler(void) {
   while (1) {
   }
 }
-
-void SysTick_Handler(void) { systick_ms++; }
 
 static void uart_send_value(const char *label, uint32_t value) {
   uart_send_message(label);
@@ -985,16 +980,8 @@ int main(void) {
   volatile uint32_t *const gpioa_bsrr = (volatile uint32_t *)GPIOA_BSRR_ADDR;
   volatile uint32_t *const rcc_ahb1enr = (volatile uint32_t *)RCC_AHB1ENR_ADDR;
 
-  volatile uint32_t *const stk_ctrl = (volatile uint32_t *)STK_CTRL_ADDR;
-  volatile uint32_t *const stk_load = (volatile uint32_t *)STK_LOAD_ADDR;
-  volatile uint32_t *const stk_val = (volatile uint32_t *)STK_VAL_ADDR;
-
   const uint32_t pin_5_mode_mask = GPIOA_MODER_PA5_MASK;
   const uint32_t pin_5_mode_value = GPIOA_MODER_PA5_OUTPUT;
-
-  const uint32_t stk_ctrl_enable_mask = STK_CTRL_ENABLE_MASK;
-  const uint32_t stk_ctrl_tickint_mask = STK_CTRL_TICKINT_MASK;
-  const uint32_t stk_ctrl_clksource_mask = STK_CTRL_CLKSOURCE_MASK;
 
   *rcc_ahb1enr |= RCC_AHB1ENR_GPIOAEN_MASK;
   (void)*rcc_ahb1enr;
@@ -1002,12 +989,7 @@ int main(void) {
   *gpioa_moder = (*gpioa_moder & ~pin_5_mode_mask) | pin_5_mode_value;
   *gpioa_bsrr = GPIOA_BSRR_BS5;
 
-  *stk_ctrl = 0u;
-  *stk_load = SYSTICK_RELOAD_16MHZ_1MS;
-  *stk_val = 0u;
-
-  *stk_ctrl =
-      stk_ctrl_enable_mask | stk_ctrl_tickint_mask | stk_ctrl_clksource_mask;
+  systick_init();
 
   uart_init();
   mpu_temp_selftest();
@@ -1033,12 +1015,12 @@ int main(void) {
   }
 
   bool led_is_on = true;
-  uint32_t last_led_toggle_ms = systick_ms;
-  uint32_t last_sample_ms = systick_ms;
-  uint32_t last_uptime_report_ms = systick_ms;
+  uint32_t last_led_toggle_ms = systick_get_ms();
+  uint32_t last_sample_ms = systick_get_ms();
+  uint32_t last_uptime_report_ms = systick_get_ms();
 
   while (1) {
-    uint32_t now_ms = systick_ms;
+    uint32_t now_ms = systick_get_ms();
 
     if (now_ms - last_led_toggle_ms >= LED_TOGGLE_DELAY_MS) {
       if (led_is_on) {

@@ -121,7 +121,7 @@ status_t i2c_init(void) {
 
 static status_t i2c_wait_flag(volatile uint32_t *reg, uint32_t mask,
                               bool wait_set) {
-  uint32_t start_ms = systick_ms;
+  uint32_t start_ms = systick_get_ms();
 
   while (1) {
     bool bit_is_set = (*reg & mask) != 0;
@@ -130,7 +130,7 @@ static status_t i2c_wait_flag(volatile uint32_t *reg, uint32_t mask,
       return DRIVER_OK;
     }
 
-    if ((systick_ms - start_ms) >= I2C_TIMEOUT_MS) {
+    if ((systick_get_ms() - start_ms) >= I2C_TIMEOUT_MS) {
       return DRIVER_TIMEOUT;
     }
   }
@@ -148,7 +148,7 @@ static bool i2c_lines_high(void) {
 }
 
 static status_t i2c_wait_lines_high(void) {
-  uint32_t start_ms = systick_ms;
+  uint32_t start_ms = systick_get_ms();
 
   while (1) {
     bool i2c_is_lines_high = i2c_lines_high();
@@ -157,7 +157,7 @@ static status_t i2c_wait_lines_high(void) {
       return DRIVER_OK;
     }
 
-    if ((systick_ms - start_ms) >= I2C_TIMEOUT_MS) {
+    if ((systick_get_ms() - start_ms) >= I2C_TIMEOUT_MS) {
       return DRIVER_TIMEOUT;
     }
   }
@@ -224,7 +224,7 @@ static status_t i2c_prepare(uint8_t dev_addr) {
 
 static status_t i2c_wait_sr1(volatile uint32_t *sr1, uint32_t success_mask,
                              status_t nack_status) {
-  uint32_t start_ms = systick_ms;
+  uint32_t start_ms = systick_get_ms();
 
   const uint32_t bus_error_mask = I2C_SR1_BERR_MASK | I2C_SR1_ARLO_MASK;
 
@@ -246,7 +246,7 @@ static status_t i2c_wait_sr1(volatile uint32_t *sr1, uint32_t success_mask,
       return DRIVER_OK;
     }
 
-    if ((systick_ms - start_ms) >= I2C_TIMEOUT_MS) {
+    if ((systick_get_ms() - start_ms) >= I2C_TIMEOUT_MS) {
       return DRIVER_TIMEOUT;
     }
   }

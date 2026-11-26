@@ -33,9 +33,9 @@ static int16_t mpu6050_make_int16(uint8_t high, uint8_t low) {
 }
 
 static void mpu6050_delay_ms(uint32_t duration_ms) {
-  uint32_t start_ms = systick_ms;
+  uint32_t start_ms = systick_get_ms();
 
-  while ((systick_ms - start_ms) <= duration_ms) {
+  while ((systick_get_ms() - start_ms) <= duration_ms) {
   }
 }
 

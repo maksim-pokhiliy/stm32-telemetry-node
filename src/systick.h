@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
-extern volatile uint32_t systick_ms;
+void systick_init(void);
+uint32_t systick_get_ms(void);
 
 #endif
