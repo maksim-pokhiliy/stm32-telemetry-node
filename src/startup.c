@@ -1,3 +1,4 @@
+#include "conversions.h"
 #include "i2c.h"
 #include "mpu6050.h"
 #include "status.h"
@@ -38,9 +39,6 @@
 
 #define MPU_SAMPLE_PERIOD_MS 100u
 #define MPU_SAMPLE_VALUE_COUNT 7u
-#define MPU_TEMP_LSB_PER_DEGREE 340
-#define MPU_TEMP_CENTI_PER_DEGREE 100
-#define MPU_TEMP_OFFSET_CENTI 3653
 
 extern unsigned char STACK_TOP;
 extern unsigned char DATA_FLASH_IMAGE_START;
@@ -64,16 +62,12 @@ int main(void);
 
 static void uptime_report(uint32_t now_ms);
 
-static void uart_send_value(const char *label, uint32_t value);
-static void uart_send_decimal(const char *label, uint32_t value);
-
 static uint32_t i2c_scan(void);
 static void i2c_selftest(void);
 static void i2c_test_verdict(const char *label, bool is_passed);
 
 static void mpu_print_sample(const mpu6050_sample_t *sample);
 static void mpu_stream_step(void);
-static int32_t mpu_temp_raw_to_centi(int16_t raw);
 static void mpu_temp_selftest(void);
 static void mpu_print_temp_centi(int16_t raw);
 
@@ -104,16 +98,6 @@ void Reset_Handler(void) {
 void Default_Handler(void) {
   while (1) {
   }
-}
-
-static void uart_send_value(const char *label, uint32_t value) {
-  uart_send_message(label);
-  uart_send_hex32(value);
-}
-
-static void uart_send_decimal(const char *label, uint32_t value) {
-  uart_send_message(label);
-  uart_send_int32((int32_t)value);
 }
 
 static void mpu_print_sample(const mpu6050_sample_t *sample) {
@@ -155,13 +139,6 @@ static void mpu_stream_step(void) {
     uart_send_value("mpu read: status=0x", (uint32_t)status);
     uart_send_message("\r\n");
   }
-}
-
-static int32_t mpu_temp_raw_to_centi(int16_t raw) {
-  int32_t numerator = (int32_t)raw * MPU_TEMP_CENTI_PER_DEGREE +
-                      (int32_t)MPU_TEMP_OFFSET_CENTI * MPU_TEMP_LSB_PER_DEGREE;
-
-  return numerator / MPU_TEMP_LSB_PER_DEGREE;
 }
 
 static void mpu_print_temp_centi(int16_t raw) {

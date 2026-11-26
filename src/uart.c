@@ -99,3 +99,13 @@ void uart_send_int32(int32_t value) {
     uart_send_byte(digits[digit_count]);
   }
 }
+
+void uart_send_value(const char *label, uint32_t value) {
+  uart_send_message(label);
+  uart_send_hex32(value);
+}
+
+void uart_send_decimal(const char *label, uint32_t value) {
+  uart_send_message(label);
+  uart_send_int32((int32_t)value);
+}
