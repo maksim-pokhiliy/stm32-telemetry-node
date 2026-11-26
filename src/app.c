@@ -18,12 +18,21 @@
 #define BMP_SAMPLE_PERIOD_MS 100u
 #define MPU_SAMPLE_VALUE_COUNT 7u
 
+typedef struct {
+  uint32_t ok;
+  uint32_t nack;
+  uint32_t timeout;
+  uint32_t bus;
+  uint32_t other;
+  uint32_t comp_error;
+} sensor_stats_t;
+
 static mpu6050_sample_t mpu_sample;
-static uint32_t mpu_ok_count;
-static uint32_t mpu_nack_count;
-static uint32_t mpu_timeout_count;
-static uint32_t mpu_bus_error_count;
-static uint32_t mpu_other_count;
+static bmp280_sample_t bmp_sample;
+static sensor_stats_t mpu_stats;
+static sensor_stats_t bmp_stats;
+static bool mpu_is_ready;
+static bool bmp_is_ready;
 
 static void uptime_report(uint32_t now_ms);
 static void mpu_print_sample(const mpu6050_sample_t *sample);
@@ -32,6 +41,10 @@ static void mpu_print_temp_centi(int16_t raw);
 static void user_button_init(void);
 static void bmp280_stream_step(void);
 static bool user_button_is_pressed(void);
+static void sensor_stats_classify_i2c(sensor_stats_t *stats, status_t status);
+static void sensor_stats_reset(sensor_stats_t *stats);
+static void sensor_stats_print(const char *name, const sensor_stats_t *stats,
+                               bool is_ready);
 
 static void mpu_print_sample(const mpu6050_sample_t *sample) {
   const int16_t values[MPU_SAMPLE_VALUE_COUNT] = {
@@ -50,6 +63,49 @@ static void mpu_print_sample(const mpu6050_sample_t *sample) {
   uart_send_message("\r\n");
 }
 
+static void sensor_stats_classify_i2c(sensor_stats_t *stats, status_t status) {
+  if (status == DRIVER_NO_ACK_ADDR || status == DRIVER_NO_ACK_DATA) {
+    stats->nack++;
+  } else if (status == DRIVER_TIMEOUT) {
+    stats->timeout++;
+  } else if (status == DRIVER_BUS_ERROR) {
+    stats->bus++;
+  } else {
+    stats->other++;
+  }
+}
+
+static void sensor_stats_reset(sensor_stats_t *stats) {
+  stats->ok = 0u;
+  stats->nack = 0u;
+  stats->timeout = 0u;
+  stats->bus = 0u;
+  stats->other = 0u;
+  stats->comp_error = 0u;
+}
+
+static void sensor_stats_print(const char *name, const sensor_stats_t *stats,
+                               bool is_ready) {
+  uart_send_message(name);
+
+  if (!is_ready) {
+    uart_send_message(": not ready\r\n");
+    return;
+  }
+
+  uart_send_decimal(": ok=", stats->ok);
+  uart_send_decimal(" nack=", stats->nack);
+  uart_send_decimal(" timeout=", stats->timeout);
+  uart_send_decimal(" bus=", stats->bus);
+  uart_send_decimal(" other=", stats->other);
+
+  if (stats->comp_error > 0u || name[0] == 'b') {
+    uart_send_decimal(" comp_error=", stats->comp_error);
+  }
+
+  uart_send_message("\r\n");
+}
+
 static void mpu_stream_step(void) {
   status_t status = mpu6050_read_sample(&mpu_sample);
 
@@ -63,20 +119,12 @@ static void mpu_stream_step(void) {
       first_sample_reported = true;
     }
 
-    mpu_ok_count++;
+    mpu_stats.ok++;
 
     mpu_print_sample(&mpu_sample);
     mpu_print_temp_centi(mpu_sample.temp);
   } else {
-    if (status == DRIVER_NO_ACK_ADDR || status == DRIVER_NO_ACK_DATA) {
-      mpu_nack_count++;
-    } else if (status == DRIVER_TIMEOUT) {
-      mpu_timeout_count++;
-    } else if (status == DRIVER_BUS_ERROR) {
-      mpu_bus_error_count++;
-    } else {
-      mpu_other_count++;
-    }
+    sensor_stats_classify_i2c(&mpu_stats, status);
 
     uart_send_value("mpu read: status=0x", (uint32_t)status);
     uart_send_message("\r\n");
@@ -91,25 +139,27 @@ static void mpu_print_temp_centi(int16_t raw) {
 
 static void uptime_report(uint32_t now_ms) {
   uart_send_decimal("uptime_s=", now_ms / 1000u);
-  uart_send_decimal(" ok=", mpu_ok_count);
-  uart_send_decimal(" nack=", mpu_nack_count);
-  uart_send_decimal(" timeout=", mpu_timeout_count);
-  uart_send_decimal(" bus=", mpu_bus_error_count);
-  uart_send_decimal(" other=", mpu_other_count);
   uart_send_decimal(" recover=", i2c_get_recover_count());
   uart_send_decimal(" bus_clear=", i2c_get_bus_clear_count());
   uart_send_message("\r\n");
 
-  if (mpu_ok_count > 0u) {
-    uart_send_message("  last: ");
+  sensor_stats_print("mpu", &mpu_stats, mpu_is_ready);
+  sensor_stats_print("bmp", &bmp_stats, bmp_is_ready);
+
+  if (mpu_is_ready && mpu_stats.ok > 0u) {
+    uart_send_message("  last mpu: ");
     mpu_print_sample(&mpu_sample);
   }
 
-  mpu_ok_count = 0u;
-  mpu_nack_count = 0u;
-  mpu_timeout_count = 0u;
-  mpu_bus_error_count = 0u;
-  mpu_other_count = 0u;
+  if (bmp_is_ready && bmp_stats.ok > 0u) {
+    uart_send_message("  last bmp: temp_centi=");
+    uart_send_int32(bmp_sample.temp_centi);
+    uart_send_decimal(" press_pa=", bmp_sample.press_q24_8 >> 8);
+    uart_send_message("\r\n");
+  }
+
+  sensor_stats_reset(&mpu_stats);
+  sensor_stats_reset(&bmp_stats);
 }
 
 static void user_button_init(void) {
@@ -132,30 +182,40 @@ static void bmp280_stream_step(void) {
 
   status_t status = bmp280_read_raw(&raw);
 
-  if (status == DRIVER_OK) {
-    const bmp280_calib_t *calib = bmp280_get_calibration();
+  if (status != DRIVER_OK) {
+    sensor_stats_classify_i2c(&bmp_stats, status);
 
-    uart_send_decimal("bmp raw_press=", raw.raw_press);
-    uart_send_decimal(" raw_temp=", raw.raw_temp);
-
-    if (calib != NULL) {
-      bmp280_sample_t sample = {0};
-
-      status_t comp_status = bmp280_compensate(&raw, calib, &sample);
-
-      if (comp_status == DRIVER_OK) {
-        uart_send_message(" temp_centi=");
-        uart_send_int32(sample.temp_centi);
-        uart_send_decimal(" press_q24_8=", sample.press_q24_8);
-        uart_send_decimal(" press_pa=", sample.press_q24_8 >> 8);
-      }
-    }
-
-    uart_send_message("\r\n");
-  } else {
     uart_send_value("bmp read: status=0x", (uint32_t)status);
     uart_send_message("\r\n");
+    return;
   }
+
+  const bmp280_calib_t *calib = bmp280_get_calibration();
+
+  if (calib == NULL) {
+    bmp_stats.comp_error++;
+    uart_send_message("bmp compensate: no calib\r\n");
+    return;
+  }
+
+  status = bmp280_compensate(&raw, calib, &bmp_sample);
+
+  if (status != DRIVER_OK) {
+    bmp_stats.comp_error++;
+    uart_send_value("bmp compensate: status=0x", (uint32_t)status);
+    uart_send_message("\r\n");
+    return;
+  }
+
+  bmp_stats.ok++;
+
+  uart_send_decimal("bmp raw_press=", raw.raw_press);
+  uart_send_decimal(" raw_temp=", raw.raw_temp);
+  uart_send_message(" temp_centi=");
+  uart_send_int32(bmp_sample.temp_centi);
+  uart_send_decimal(" press_q24_8=", bmp_sample.press_q24_8);
+  uart_send_decimal(" press_pa=", bmp_sample.press_q24_8 >> 8);
+  uart_send_message("\r\n");
 }
 
 static bool user_button_is_pressed(void) {
@@ -190,9 +250,6 @@ int main(void) {
   } else {
     uart_send_message("boot mode: NORMAL\r\n");
   }
-
-  bool mpu_is_ready = false;
-  bool bmp_is_ready = false;
 
   status_t i2c_init_result = i2c_init();
 

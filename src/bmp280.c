@@ -235,6 +235,10 @@ status_t bmp280_compensate_press(uint32_t raw_press,
   var2 = ((dig_P8 * p) >> 19);
   p = ((p + var1 + var2) >> 8) + (dig_P7 * 16);
 
+  if (p < 0 || p > (int64_t)UINT32_MAX) {
+    return DRIVER_INVALID_ARG;
+  }
+
   *press_q24_8 = (uint32_t)p;
 
   return DRIVER_OK;

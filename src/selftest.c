@@ -154,11 +154,14 @@ static void bmp_press_selftest(void) {
   uart_send_uint32(sample.press_q24_8);
   uart_send_message("\r\n");
 
-  const int32_t expected = 25767233;
-  const int32_t got = (int32_t)sample.press_q24_8;
-  const int32_t diff = got - expected;
+  const int64_t algorithm_expected = 25767233;
+  const int64_t datasheet_expected = 25767236;
+  const int64_t got = (int64_t)sample.press_q24_8;
+  const int64_t algo_diff = got - algorithm_expected;
+  const int64_t sheet_diff = got - datasheet_expected;
 
-  if (status != DRIVER_OK || diff < -4 || diff > 4) {
+  if (status != DRIVER_OK || algo_diff != 0 || sheet_diff < -4 ||
+      sheet_diff > 4) {
     is_passed = false;
   }
 
@@ -900,7 +903,6 @@ static void i2c_selftest(void) {
 
     if (st != DRIVER_OK) {
       fail_18++;
-
       continue;
     }
 
