@@ -93,6 +93,7 @@ static void uptime_report(uint32_t now_ms) {
   uart_send_decimal(" bus=", mpu_bus_error_count);
   uart_send_decimal(" other=", mpu_other_count);
   uart_send_decimal(" recover=", i2c_get_recover_count());
+  uart_send_decimal(" bus_clear=", i2c_get_bus_clear_count());
   uart_send_message("\r\n");
 
   if (mpu_ok_count > 0u) {

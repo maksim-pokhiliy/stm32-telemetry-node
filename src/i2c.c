@@ -12,8 +12,11 @@
 #define I2C_TRISE_16MHZ 17u
 
 #define I2C_TIMEOUT_MS 5u
+#define I2C_BUS_CLEAR_MAX_PULSES 9u
+#define I2C_BUS_CLEAR_PULSE_MS 1u
 
 static uint32_t i2c_recover_count = 0u;
+static uint32_t i2c_bus_clear_count = 0u;
 
 static status_t i2c_wait_flag(volatile uint32_t *reg, uint32_t mask,
                               bool wait_set);
@@ -23,6 +26,8 @@ static status_t i2c_wait_sr1(volatile uint32_t *sr1, uint32_t success_mask,
 
 static bool i2c_lines_high(void);
 static status_t i2c_wait_lines_high(void);
+static void i2c_release_pins(void);
+static status_t i2c_bus_clear(void);
 static status_t i2c_recover(void);
 static bool i2c_is_fault(status_t status);
 static void i2c_reset_peripheral(void);
@@ -89,6 +94,12 @@ status_t i2c_init(void) {
 
   *i2c_cr1 &= ~I2C_CR1_PE_MASK;
 
+  status_t clear_status = i2c_bus_clear();
+
+  if (clear_status != DRIVER_OK) {
+    return clear_status;
+  }
+
   *gpiob_otyper = (*gpiob_otyper & ~pins_otyper_mask) | pins_otyper_value;
   *gpiob_pupdr = (*gpiob_pupdr & ~pins_pupdr_mask) | pins_pupdr_value;
   *gpiob_ospeedr = (*gpiob_ospeedr & ~pins_ospeedr_mask) | pins_ospeedr_value;
@@ -110,12 +121,16 @@ status_t i2c_init(void) {
   status_t lines_status = i2c_wait_lines_high();
 
   if (lines_status != DRIVER_OK) {
+    *i2c_cr1 &= ~I2C_CR1_PE_MASK;
+    i2c_release_pins();
     return lines_status;
   }
 
   status_t busy_status = i2c_wait_flag(i2c1_sr2, I2C_SR2_BUSY_MASK, false);
 
   if (busy_status != DRIVER_OK) {
+    *i2c_cr1 &= ~I2C_CR1_PE_MASK;
+    i2c_release_pins();
     return busy_status;
   }
 
@@ -166,6 +181,99 @@ static status_t i2c_wait_lines_high(void) {
   }
 }
 
+static void i2c_release_pins(void) {
+  volatile uint32_t *const gpiob_moder = (volatile uint32_t *)GPIOB_MODER_ADDR;
+
+  *gpiob_moder =
+      (*gpiob_moder & ~(GPIOB_MODER_PB8_MASK | GPIOB_MODER_PB9_MASK)) |
+      GPIOB_MODER_PB8_INPUT | GPIOB_MODER_PB9_INPUT;
+}
+
+static bool i2c_scl_is_high(void) {
+  volatile uint32_t *const gpiob_idr = (volatile uint32_t *)GPIOB_IDR_ADDR;
+
+  return (*gpiob_idr & GPIOB_IDR_PB8_MASK) != 0u;
+}
+
+static bool i2c_sda_is_high(void) {
+  volatile uint32_t *const gpiob_idr = (volatile uint32_t *)GPIOB_IDR_ADDR;
+
+  return (*gpiob_idr & GPIOB_IDR_PB9_MASK) != 0u;
+}
+
+static status_t i2c_wait_scl_high(void) {
+  uint32_t start_ms = systick_get_ms();
+
+  while (!i2c_scl_is_high()) {
+    if (systick_elapsed_ms(systick_get_ms(), start_ms) >= I2C_TIMEOUT_MS) {
+      return DRIVER_TIMEOUT;
+    }
+  }
+
+  return DRIVER_OK;
+}
+
+static status_t i2c_bus_clear(void) {
+  i2c_release_pins();
+
+  if (!i2c_scl_is_high()) {
+    status_t scl_status = i2c_wait_scl_high();
+
+    if (scl_status != DRIVER_OK) {
+      return scl_status;
+    }
+  }
+
+  if (i2c_sda_is_high()) {
+    return DRIVER_OK;
+  }
+
+  volatile uint32_t *const gpiob_bsrr = (volatile uint32_t *)GPIOB_BSRR_ADDR;
+
+  volatile uint32_t *const gpiob_otyper =
+      (volatile uint32_t *)GPIOB_OTYPER_ADDR;
+
+  volatile uint32_t *const gpiob_moder = (volatile uint32_t *)GPIOB_MODER_ADDR;
+
+  *gpiob_bsrr = GPIOB_BSRR_BS8;
+
+  *gpiob_otyper =
+      (*gpiob_otyper & ~GPIOB_OTYPER_PB8_MASK) | GPIOB_OTYPER_PB8_OD;
+
+  *gpiob_moder =
+      (*gpiob_moder & ~GPIOB_MODER_PB8_MASK) | GPIOB_MODER_PB8_OUTPUT;
+
+  for (uint32_t pulse = 0u; pulse < I2C_BUS_CLEAR_MAX_PULSES; pulse++) {
+    *gpiob_bsrr = GPIOB_BSRR_BR8;
+
+    systick_delay_ms(I2C_BUS_CLEAR_PULSE_MS);
+
+    *gpiob_bsrr = GPIOB_BSRR_BS8;
+
+    status_t scl_status = i2c_wait_scl_high();
+
+    if (scl_status != DRIVER_OK) {
+      i2c_release_pins();
+
+      return scl_status;
+    }
+
+    systick_delay_ms(I2C_BUS_CLEAR_PULSE_MS);
+
+    if (i2c_sda_is_high()) {
+      i2c_release_pins();
+
+      i2c_bus_clear_count++;
+
+      return DRIVER_OK;
+    }
+  }
+
+  i2c_release_pins();
+
+  return DRIVER_TIMEOUT;
+}
+
 static void i2c_reset_peripheral(void) {
   volatile uint32_t *const rcc_apb1rstr =
       (volatile uint32_t *)RCC_APB1RSTR_ADDR;
@@ -196,6 +304,8 @@ static status_t i2c_recover(void) {
 }
 
 uint32_t i2c_get_recover_count(void) { return i2c_recover_count; }
+
+uint32_t i2c_get_bus_clear_count(void) { return i2c_bus_clear_count; }
 
 static status_t i2c_prepare(uint8_t dev_addr) {
   if (dev_addr > I2C_ADDR_7BIT_MAX) {

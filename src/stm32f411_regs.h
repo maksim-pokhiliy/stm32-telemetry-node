@@ -40,10 +40,14 @@
 #define GPIOB_OSPEEDR_ADDR 0x40020408u
 #define GPIOB_PUPDR_ADDR 0x4002040Cu
 #define GPIOB_IDR_ADDR 0x40020410u
+#define GPIOB_BSRR_ADDR 0x40020418u
 #define GPIOB_AFRH_ADDR 0x40020424u
 
 #define GPIOB_MODER_PB8_MASK (3u << 16)
 #define GPIOB_MODER_PB9_MASK (3u << 18)
+#define GPIOB_MODER_PB8_INPUT (0u << 16)
+#define GPIOB_MODER_PB9_INPUT (0u << 18)
+#define GPIOB_MODER_PB8_OUTPUT (1u << 16)
 #define GPIOB_MODER_PB8_AF (2u << 16)
 #define GPIOB_MODER_PB9_AF (2u << 18)
 
@@ -64,6 +68,9 @@
 
 #define GPIOB_IDR_PB8_MASK (1u << 8)
 #define GPIOB_IDR_PB9_MASK (1u << 9)
+
+#define GPIOB_BSRR_BS8 (1u << 8)
+#define GPIOB_BSRR_BR8 (1u << 24)
 
 #define GPIOB_AFRH_PB8_MASK (15u << 0)
 #define GPIOB_AFRH_PB9_MASK (15u << 4)
