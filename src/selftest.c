@@ -178,17 +178,18 @@ static void i2c_selftest(void) {
 
   uint32_t recover_before_invalid = i2c_get_recover_count();
 
-  uint8_t buf[2] = {0xAA, 0xAA};
+  uint8_t invalid_read_buf[2] = {0xAA, 0xAA};
 
   status_t invalid_read_addr_status =
-      i2c_read_reg(I2C_TEST_INVALID_ADDR, I2C_TEST_REG, buf, 1);
+      i2c_read_reg(I2C_TEST_INVALID_ADDR, I2C_TEST_REG, invalid_read_buf, 1);
 
   uart_send_value("invalid read addr status=0x",
                   (uint32_t)invalid_read_addr_status);
 
   uart_send_message("\r\n");
 
-  status_t len_0_status = i2c_read_reg(I2C_TEST_DEV_ADDR, I2C_TEST_REG, buf, 0);
+  status_t len_0_status =
+      i2c_read_reg(I2C_TEST_DEV_ADDR, I2C_TEST_REG, invalid_read_buf, 0);
 
   uart_send_value("len0 status=0x", (uint32_t)len_0_status);
   uart_send_message("\r\n");
@@ -204,7 +205,8 @@ static void i2c_selftest(void) {
   uart_send_value("invalid recover=0x", recover_invalid);
   uart_send_message("\r\n");
 
-  bool buf_unchanged = (buf[0] == 0xAA) && (buf[1] == 0xAA);
+  bool buf_unchanged =
+      (invalid_read_buf[0] == 0xAA) && (invalid_read_buf[1] == 0xAA);
 
   bool is_invalid_read_passed =
       invalid_read_addr_status == DRIVER_INVALID_ARG &&
@@ -363,7 +365,7 @@ static void i2c_selftest(void) {
   for (int pass = 0; pass < 2; pass++) {
     for (uint8_t address = I2C_TEST_CALIB_START_76;
          address <= I2C_TEST_CALIB_END_76; address++) {
-      uint8_t addr_ind = address - I2C_TEST_CALIB_START_76;
+      size_t addr_ind = address - I2C_TEST_CALIB_START_76;
       uint8_t addr_val_curr = 0;
 
       status_t result =

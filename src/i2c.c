@@ -394,7 +394,7 @@ static status_t i2c_read_one(uint8_t *buf) {
   result = i2c_wait_sr1(i2c1_sr1, I2C_SR1_RxNE_MASK, DRIVER_BUS_ERROR);
 
   if (result == DRIVER_OK) {
-    buf[0] = *i2c1_dr;
+    buf[0] = (uint8_t)*i2c1_dr;
   }
 
   return result;
@@ -419,8 +419,8 @@ static status_t i2c_read_two(uint8_t *buf) {
 
   i2c_stop_request();
 
-  buf[0] = *i2c1_dr;
-  buf[1] = *i2c1_dr;
+  buf[0] = (uint8_t)*i2c1_dr;
+  buf[1] = (uint8_t)*i2c1_dr;
 
   return result;
 }
@@ -442,7 +442,7 @@ static status_t i2c_read_many(uint8_t *buf, size_t len) {
       return result;
     }
 
-    buf[idx] = *i2c1_dr;
+    buf[idx] = (uint8_t)*i2c1_dr;
     idx++;
   }
 
@@ -454,7 +454,7 @@ static status_t i2c_read_many(uint8_t *buf, size_t len) {
 
   *i2c1_cr1 &= ~I2C_CR1_ACK_MASK;
 
-  buf[idx] = *i2c1_dr;
+  buf[idx] = (uint8_t)*i2c1_dr;
   idx++;
 
   result = i2c_wait_sr1(i2c1_sr1, I2C_SR1_BTF_MASK, DRIVER_BUS_ERROR);
@@ -465,9 +465,9 @@ static status_t i2c_read_many(uint8_t *buf, size_t len) {
 
   i2c_stop_request();
 
-  buf[idx] = *i2c1_dr;
+  buf[idx] = (uint8_t)*i2c1_dr;
   idx++;
-  buf[idx] = *i2c1_dr;
+  buf[idx] = (uint8_t)*i2c1_dr;
 
   return result;
 }

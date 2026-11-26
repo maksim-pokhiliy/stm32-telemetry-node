@@ -62,8 +62,6 @@ status_t mpu6050_init(void) {
     return status;
   }
 
-  systick_delay_ms(MPU6050_WAKE_DELAY_MS);
-
   status = i2c_write_reg(MPU6050_ADDR, MPU6050_REG_PWR_MGMT_2,
                          MPU6050_PWR_MGMT_2_ALL_ON);
   if (status != DRIVER_OK) {
@@ -93,6 +91,8 @@ status_t mpu6050_init(void) {
   if (status != DRIVER_OK) {
     return status;
   }
+
+  systick_delay_ms(MPU6050_WAKE_DELAY_MS);
 
   return DRIVER_OK;
 }

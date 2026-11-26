@@ -1,6 +1,6 @@
 CC := arm-none-eabi-gcc
 SIZE := arm-none-eabi-size
-CFLAGS := -mcpu=cortex-m4 -mthumb -Og -g3 -ffreestanding -Wall -Wextra
+CFLAGS := -mcpu=cortex-m4 -mthumb -Og -g3 -ffreestanding -Wall -Wextra -Wconversion -Wshadow
 DEPFLAGS := -MMD -MP
 LDFLAGS := -nostdlib -T stm32f411re.ld -Wl,-Map=build/firmware.map
 OBJCOPY := arm-none-eabi-objcopy

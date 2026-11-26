@@ -66,9 +66,9 @@ void uart_send_hex32(uint32_t value) {
     uint8_t ascii_symbol;
 
     if (nibble < 10) {
-      ascii_symbol = '0' + nibble;
+      ascii_symbol = (uint8_t)('0' + nibble);
     } else {
-      ascii_symbol = 'A' + nibble - 10;
+      ascii_symbol = (uint8_t)('A' + nibble - 10);
     }
 
     uart_send_byte(ascii_symbol);
