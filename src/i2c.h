@@ -2,7 +2,6 @@
 #define I2C_H
 
 #include "status.h"
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 

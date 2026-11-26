@@ -2,8 +2,11 @@
 #include "status.h"
 #include "stm32f411_regs.h"
 #include "systick.h"
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
+#define I2C_ADDR_7BIT_MAX 0x7F
 #define I2C_FREQ_16MHZ 16u
 #define I2C_CCR_100KHZ 80u
 #define I2C_TRISE_16MHZ 17u
@@ -195,7 +198,7 @@ static status_t i2c_recover(void) {
 uint32_t i2c_get_recover_count(void) { return i2c_recover_count; }
 
 static status_t i2c_prepare(uint8_t dev_addr) {
-  if (dev_addr > 0x7F) {
+  if (dev_addr > I2C_ADDR_7BIT_MAX) {
     return DRIVER_INVALID_ARG;
   }
 
@@ -492,7 +495,7 @@ status_t i2c_write_reg(uint8_t dev_addr, uint8_t reg_addr, uint8_t value) {
 
 status_t i2c_read_reg(uint8_t dev_addr, uint8_t reg_addr, uint8_t *buf,
                       size_t len) {
-  if (buf == NULL || len < 1 || dev_addr > 0x7F) {
+  if (buf == NULL || len < 1 || dev_addr > I2C_ADDR_7BIT_MAX) {
     return DRIVER_INVALID_ARG;
   }
 

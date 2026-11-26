@@ -4,6 +4,7 @@
 #include "status.h"
 #include "uart.h"
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #define I2C_SCAN_FIRST_ADDR 0x08u

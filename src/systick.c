@@ -1,5 +1,6 @@
 #include "systick.h"
 #include "stm32f411_regs.h"
+#include <stdint.h>
 
 #define SYSTICK_RELOAD_16MHZ_1MS 15999u
 
